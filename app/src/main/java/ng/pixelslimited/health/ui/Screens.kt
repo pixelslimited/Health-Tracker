@@ -77,6 +77,8 @@ import ng.pixelslimited.health.data.Store
 import ng.pixelslimited.health.data.T
 import ng.pixelslimited.health.data.bmi
 import ng.pixelslimited.health.data.dateText
+import ng.pixelslimited.health.data.distanceText
+import ng.pixelslimited.health.data.metres
 import ng.pixelslimited.health.data.dayStart
 import ng.pixelslimited.health.data.timeText
 import ng.pixelslimited.health.data.findrisc
@@ -304,6 +306,7 @@ fun Reports(me: Profile, onAdd: (String) -> Unit) {
     val sleep = me.since(T.SLEEP, from)
     Section(s(R.string.last_7_days)) {
         Stat(s(R.string.avg_steps), days.average().toInt().toString())
+        Stat(s(R.string.distance), distanceText(ctx, me.metres(days.sum())))
         Stat(s(R.string.goal_days), ctx.getString(R.string.of_total, days.count { it >= me.dailyGoal }, 7))
         Stat(s(R.string.streak), ctx.getString(R.string.f_days, streak(me, today)))
         Stat(s(R.string.t_hr), avg(me.since(T.HR, from).map { it.a }))

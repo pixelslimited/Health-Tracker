@@ -50,6 +50,12 @@ fun durationText(ctx: Context, hours: Double): String {
     return ctx.getString(R.string.dur_hm, m / 60, m % 60)
 }
 
+/** Distance walked, from steps and a stride of about 41.5% of height (41.3% for women). An estimate. */
+fun Profile.metres(steps: Int): Double = steps * heightCm.toDouble() * (if (male) 0.415 else 0.413) / 100.0
+
+fun distanceText(ctx: Context, metres: Double): String =
+    if (metres < 1000) ctx.getString(R.string.f_m, Math.round(metres).toInt()) else ctx.getString(R.string.f_km, metres / 1000.0)
+
 fun Profile.bmi(): Double? = last(T.WEIGHT)?.let { it.a / (heightCm / 100.0).pow(2) }
 
 fun dayStart(d: LocalDate = LocalDate.now()): Long = d.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()

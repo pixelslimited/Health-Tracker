@@ -43,7 +43,9 @@ import ng.pixelslimited.health.data.Store
 import ng.pixelslimited.health.data.T
 import ng.pixelslimited.health.data.bmi
 import ng.pixelslimited.health.data.dayStart
+import ng.pixelslimited.health.data.distanceText
 import ng.pixelslimited.health.data.durationText
+import ng.pixelslimited.health.data.metres
 import ng.pixelslimited.health.data.hoursOf
 import ng.pixelslimited.health.data.last
 import ng.pixelslimited.health.data.level
@@ -137,7 +139,10 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
             },
             fontSize = big.sp, lineHeight = big.sp, letterSpacing = (-4).sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
         )
-        Text(ctx.getString(R.string.goal_n, me.dailyGoal), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            ctx.getString(R.string.goal_n, me.dailyGoal) + "  /  " + distanceText(ctx, me.metres(steps)),
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         SegBar(steps.toFloat() / me.dailyGoal)
         HourBars(me.hoursOf(today), LocalTime.now().hour, s(R.string.hourly_desc))
     }
@@ -157,6 +162,7 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
     Section(s(R.string.this_week)) {
         DayStrip(week, me.dailyGoal, dayLabels(), today.dayOfWeek.value - 1, s(R.string.week_desc))
         Stat(s(R.string.goal), ctx.getString(R.string.of_total, week.sum(), me.weeklyGoal))
+        Stat(s(R.string.distance), distanceText(ctx, me.metres(week.sum())))
         SegBar(week.sum().toFloat() / me.weeklyGoal)
         Stat(s(R.string.streak), ctx.getString(R.string.f_days, streak(me, today)))
     }

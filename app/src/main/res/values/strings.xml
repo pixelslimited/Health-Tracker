@@ -254,4 +254,7 @@
     <string name="rev_ok">Just right</string>
     <string name="rev_hard">Too hard</string>
     <string name="review_hint">Your answer sets the difficulty from tomorrow.</string>
+    <string name="distance">Distance</string>
+    <string name="f_m" translatable="false">%d m</string>
+    <string name="f_km" translatable="false">%.2f km</string>
 </resources>
