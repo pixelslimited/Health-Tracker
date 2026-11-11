@@ -4,7 +4,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import kotlin.math.abs
 
-data class PpgState(val finger: Boolean = false, val progress: Float = 0f, val bpm: Int? = null, val failed: Boolean = false)
+data class PpgState(val finger: Boolean = false, val progress: Float = 0f, val bpm: Int? = null, val failed: Boolean = false, val wave: List<Float> = emptyList())
 
 /**
  * Heart rate from the camera: with a fingertip over the lens and the flash on, each heartbeat
@@ -31,7 +31,7 @@ class Ppg(private val on: (PpgState) -> Unit) : ImageAnalysis.Analyzer {
             values.add(y)
             val elapsed = now - times[0]
             if (elapsed < DURATION) {
-                on(PpgState(true, elapsed / DURATION.toFloat()))
+                on(PpgState(true, elapsed / DURATION.toFloat(), wave = wave()))
                 return
             }
             done = true
@@ -43,6 +43,24 @@ class Ppg(private val on: (PpgState) -> Unit) : ImageAnalysis.Analyzer {
         } finally {
             img.close()
         }
+    }
+
+    /** The last few seconds of the pulse signal with the slow drift removed, scaled to -1..1 for drawing. */
+    private fun wave(): List<Float> {
+        val n = values.size
+        val from = maxOf(0, n - 150)
+        fun avg(i: Int, w: Int): Float {
+            var sum = 0f
+            var c = 0
+            for (j in maxOf(0, i - w)..minOf(n - 1, i + w)) {
+                sum += values[j]
+                c++
+            }
+            return sum / c
+        }
+        val d = (from until n).map { avg(it, 1) - avg(it, 20) }
+        val m = d.maxOf { abs(it) }.coerceAtLeast(0.05f)
+        return d.map { it / m }
     }
 
     private fun mean(plane: ImageProxy.PlaneProxy, w: Int, h: Int): Float {

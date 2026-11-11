@@ -223,6 +223,7 @@ fun MeasureHr(onDone: (Int) -> Unit, onClose: () -> Unit) {
                     !state.finger -> Text(s(R.string.hr_place_finger))
                     else -> {
                         Text(s(R.string.hr_hold))
+                        PulseWave(state.wave)
                         LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
                     }
                 }

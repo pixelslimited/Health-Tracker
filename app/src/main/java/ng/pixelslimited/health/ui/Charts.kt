@@ -262,3 +262,22 @@ fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (
         }
     }
 }
+
+/** Live pulse trace: the line scrolls as the finger signal arrives and a dot rides its newest point. */
+@Composable
+fun PulseWave(wave: List<Float>) {
+    val ink = MaterialTheme.colorScheme.onSurface
+    val accent = MaterialTheme.colorScheme.primary
+    val line = MaterialTheme.colorScheme.outlineVariant
+    Canvas(Modifier.fillMaxWidth().height(96.dp)) {
+        drawLine(line, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = 1.dp.toPx())
+        if (wave.size < 2) return@Canvas
+        val pad = 8.dp.toPx()
+        val h = size.height / 2 - pad
+        fun at(i: Int) = Offset(size.width * i / 149f, size.height / 2 - wave[i] * h)
+        val path = Path()
+        wave.indices.forEach { i -> if (i == 0) path.moveTo(at(i).x, at(i).y) else path.lineTo(at(i).x, at(i).y) }
+        drawPath(path, ink, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawCircle(accent, 7.dp.toPx(), at(wave.size - 1))
+    }
+}
