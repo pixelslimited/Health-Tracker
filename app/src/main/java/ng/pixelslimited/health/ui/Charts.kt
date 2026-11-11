@@ -233,10 +233,13 @@ fun NavIcon(kind: Int, tint: Color, bg: Color) {
                 drawCircle(bg, r * 0.8f, Offset(size.width / 2 + r * 0.5f, size.height / 2 - r * 0.3f))
             }
             else -> {
-                val bw = size.width / 5
-                listOf(0.5f, 0.95f, 0.7f).forEachIndexed { i, f ->
-                    drawRect(tint, Offset(i * 2 * bw, size.height * (1 - f)), Size(bw, size.height * f))
-                }
+                val path = Path()
+                path.moveTo(size.width * 0.12f, size.height * 0.88f)
+                path.lineTo(size.width * 0.42f, size.height * 0.52f)
+                path.lineTo(size.width * 0.6f, size.height * 0.72f)
+                path.lineTo(size.width * 0.86f, size.height * 0.2f)
+                drawPath(path, tint, style = Stroke(sw, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawCircle(tint, 3.dp.toPx(), Offset(size.width * 0.86f, size.height * 0.2f))
             }
         }
     }

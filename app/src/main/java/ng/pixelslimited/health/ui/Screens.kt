@@ -113,6 +113,7 @@ fun AppRoot() {
     val me = data.me
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var settings by rememberSaveable { mutableStateOf(false) }
+    var reports by rememberSaveable { mutableStateOf(false) }
     var add by remember { mutableStateOf("") }
     var release by remember { mutableStateOf<Updater.Release?>(null) }
     var dismissed by rememberSaveable { mutableStateOf(false) }
@@ -126,16 +127,16 @@ fun AppRoot() {
         } catch (e: Exception) {
         }
     }
-    BackHandler(settings) { settings = false }
+    BackHandler(settings || reports) { settings = false; reports = false }
     val save: (Entry) -> Unit = { e ->
         Store.edit { it.copy(entries = it.entries + e) }
         if (level(e) == Level.DANGER) alert = e
         StepService.start(appCtx)
     }
-    val titles = listOf(R.string.tab_today, R.string.tab_vitals, R.string.t_sleep, R.string.tab_reports)
+    val titles = listOf(R.string.tab_today, R.string.tab_vitals, R.string.t_sleep, R.string.tab_move)
     Scaffold(
         bottomBar = {
-            if (!settings) BottomBar(titles.map { s(it) }, tab, s(R.string.add), { tab = it }, { add = "pick" })
+            if (!settings && !reports) BottomBar(titles.map { s(it) }, tab, s(R.string.add), { tab = it }, { add = "pick" })
         }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
@@ -148,17 +149,23 @@ fun AppRoot() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(dateText() + "  /  " + me.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                    Text(s(if (settings) R.string.settings else titles[tab]), style = MaterialTheme.typography.headlineMedium)
+                    Text(s(if (settings) R.string.settings else if (reports) R.string.tab_reports else titles[tab]), style = MaterialTheme.typography.headlineMedium)
                 }
                 Box(
-                    Modifier.size(48.dp).border(1.5.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(6.dp)).clickable { settings = !settings },
+                    Modifier.padding(end = 8.dp).size(48.dp).border(1.5.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(6.dp)).clickable { reports = !reports; settings = false },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(if (reports) Icons.Filled.Close else Icons.Filled.DateRange, contentDescription = s(R.string.tab_reports))
+                }
+                Box(
+                    Modifier.size(48.dp).border(1.5.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(6.dp)).clickable { settings = !settings; reports = false },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(if (settings) Icons.Filled.Close else Icons.Filled.Settings, contentDescription = s(R.string.settings))
                 }
             }
             AnimatedContent(
-                targetState = if (settings) -1 else tab,
+                targetState = if (settings) -1 else if (reports) -2 else tab,
                 transitionSpec = { fadeIn(tween(240)) togetherWith fadeOut(tween(120)) },
                 label = "screen",
             ) { page ->
@@ -168,7 +175,8 @@ fun AppRoot() {
                         0 -> Today(me, { tab = it }, save)
                         1 -> Vitals(me) { add = it }
                         2 -> SleepScreen(me, save) { add = it }
-                        else -> Reports(me) { add = it }
+                        -2 -> Reports(me) { add = it }
+                        else -> Move(me, save)
                     }
                 }
             }

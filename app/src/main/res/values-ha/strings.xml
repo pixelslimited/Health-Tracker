@@ -274,4 +274,6 @@
     <string name="pl_top">Wuraren da aka fi ziyarta</string>
     <string name="pl_visits">Ziyara %1$d, %2$s</string>
     <string name="pl_day_row">%1$s: tasha %2$d, %3$s</string>
+    <string name="tab_move">Motsi</string>
+    <string name="places_locate">Wurina</string>
 </resources>

@@ -34,7 +34,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,6 +69,7 @@ import ng.pixelslimited.health.data.routeOf
 import ng.pixelslimited.health.data.stopsOn
 import ng.pixelslimited.health.data.timeText
 import ng.pixelslimited.health.places.PlaceTracker
+import kotlinx.coroutines.delay
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
@@ -82,7 +85,24 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 
-/** Today's stops and distance, with the switch that turns location logging on. */
+/** Today's stop count, distance and whether you are at a stop now; refreshes every few seconds without re-reading the whole log. */
+@Composable
+fun rememberPlaceToday(me: Profile): Triple<Int, Double, Long> {
+    val ctx = LocalContext.current
+    val today = LocalDate.now()
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(10_000)
+            tick++
+        }
+    }
+    val n = remember(me.entries) { me.stopsOn(today).size }
+    val routeM = remember(me.routes[today.toString()]) { routeMetres(me.routeOf(today)) }
+    val live = if (tick >= 0) PlaceTracker.todayMetres(ctx) else 0.0
+    return Triple(n, maxOf(routeM, live), PlaceTracker.hereSince(ctx))
+}
+
 @Composable
 fun PlacesBlock(me: Profile) {
     val ctx = LocalContext.current
@@ -97,17 +117,14 @@ fun PlacesBlock(me: Profile) {
             if (Build.VERSION.SDK_INT >= 29 && !PlaceTracker.hasBackground(ctx)) bgAsk.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
     }
-    val today = LocalDate.now()
-    val stops = me.stopsOn(today)
-    val metres = routeMetres(me.routeOf(today))
+    val (stopCount, metres, here) = rememberPlaceToday(me)
     Section(s(R.string.places)) {
         if (!on) {
             Text(s(R.string.places_desc))
             Button(onClick = { ask.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }) { Text(s(R.string.enable)) }
         } else {
-            Stat(s(R.string.today), ctx.getString(R.string.n_stops, stops.size))
+            Stat(s(R.string.today), ctx.getString(R.string.n_stops, stopCount))
             Stat(s(R.string.distance), distanceText(ctx, metres))
-            val here = PlaceTracker.hereSince(ctx)
             if (here > 0) Text(ctx.getString(R.string.places_here, timeText(here)), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         OutlinedButton(onClick = { open = true }) { Text(s(R.string.places_open)) }
@@ -128,6 +145,9 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
     var rTo by remember { mutableStateOf(today) }
     var renaming by remember { mutableStateOf<Int?>(null) }
     var confirm by remember { mutableStateOf(false) }
+    var startOnMe by remember { mutableStateOf(true) }
+    var here by remember { mutableStateOf(PlaceTracker.lastFix(ctx)) }
+    var locateTick by remember { mutableIntStateOf(0) }
     val from = when (mode) {
         0 -> day
         1 -> day.minusDays((day.dayOfWeek.value - 1).toLong())
@@ -177,6 +197,7 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
         else -> from.format(DateTimeFormatter.ofPattern("yyyy"))
     }
     fun shift(dir: Long) {
+        startOnMe = false
         day = when (mode) {
             0 -> day.plusDays(dir)
             1 -> day.plusWeeks(dir)
@@ -185,7 +206,7 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
         }
     }
     fun pick(cur: LocalDate, set: (LocalDate) -> Unit) {
-        android.app.DatePickerDialog(ctx, { _, y, m, d -> set(LocalDate.of(y, m + 1, d)) }, cur.year, cur.monthValue - 1, cur.dayOfMonth).show()
+        android.app.DatePickerDialog(ctx, { _, y, m, d -> startOnMe = false; set(LocalDate.of(y, m + 1, d)) }, cur.year, cur.monthValue - 1, cur.dayOfMonth).show()
     }
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -197,7 +218,7 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
                 }
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(R.string.pl_day, R.string.pl_week, R.string.pl_month, R.string.pl_year, R.string.pl_range).forEachIndexed { i, label ->
-                        FilterChip(selected = mode == i, onClick = { mode = i }, label = { Text(s(label)) })
+                        FilterChip(selected = mode == i, onClick = { mode = i; startOnMe = false }, label = { Text(s(label)) })
                     }
                 }
                 if (mode == 4) {
@@ -212,9 +233,13 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
                         OutlinedButton(onClick = { if (to.isBefore(today)) shift(1) }) { Text(s(R.string.day_next)) }
                     }
                 }
-                Text(ctx.getString(R.string.places_summary, stops.size, distanceText(ctx, metres)), style = MaterialTheme.typography.titleLarge)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(ctx.getString(R.string.places_summary, stops.size, distanceText(ctx, metres)), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                    OutlinedButton(onClick = { here = PlaceTracker.lastFix(ctx); startOnMe = true; locateTick++ }) { Text(s(R.string.places_locate)) }
+                }
                 RouteMap(
-                    thinRoutes(lines), stops, names, dark, MaterialTheme.colorScheme.primary.toArgb(), "$from/$to/$mode", { renaming = it },
+                    lines, stops, names, dark, MaterialTheme.colorScheme.primary.toArgb(), "$from/$to/$mode/$startOnMe/$locateTick",
+                    here, startOnMe, { renaming = it },
                     Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(12.dp)),
                 )
                 LazyColumn(Modifier.weight(1f)) {
@@ -249,7 +274,7 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
                                 val r = days[i]
                                 Text(
                                     ctx.getString(R.string.pl_day_row, r.date.format(med), r.stops, distanceText(ctx, r.metres)),
-                                    Modifier.fillMaxWidth().clickable { day = r.date; mode = 0 }.padding(vertical = 8.dp),
+                                    Modifier.fillMaxWidth().clickable { startOnMe = false; day = r.date; mode = 0 }.padding(vertical = 8.dp),
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
                             }
@@ -301,32 +326,45 @@ private fun openInMaps(ctx: android.content.Context, st: Stop, name: String) {
     }
 }
 
-/** Street map with the day's route drawn as a line and each stop as a numbered, labelled marker. */
+/** Street map with the route drawn as a line, numbered stops and a dot for where you are. Rebuilt only when its inputs change. */
 @Composable
 private fun RouteMap(
     lines: List<List<Pair<Double, Double>>>, stops: List<Stop>, names: List<String>, dark: Boolean,
-    accent: Int, scope: String, onTap: (Int) -> Unit, modifier: Modifier,
+    accent: Int, scope: String, here: Pair<Double, Double>?, onMe: Boolean, onTap: (Int) -> Unit, modifier: Modifier,
 ) {
     val ctx = LocalContext.current
+    val start = remember { here }
     val map = remember {
         Configuration.getInstance().apply {
             userAgentValue = ctx.packageName
             osmdroidBasePath = File(ctx.cacheDir, "osm")
             osmdroidTileCache = File(ctx.cacheDir, "osm/tiles")
+            tileDownloadThreads = 4.toShort()
+            tileFileSystemThreads = 4.toShort()
         }
         MapView(ctx).apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
+            isTilesScaledToDpi = true
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
-            controller.setZoom(6.0)
-            controller.setCenter(GeoPoint(9.0, 8.0))
+            // Open straight on your last known position so the first tiles loaded are the ones you need.
+            if (start != null) {
+                controller.setZoom(16.0)
+                controller.setCenter(GeoPoint(start.first, start.second))
+            } else {
+                controller.setZoom(6.0)
+                controller.setCenter(GeoPoint(9.0, 8.0))
+            }
         }
     }
     DisposableEffect(Unit) { onDispose { map.onDetach() } }
+    val key = "$scope/${stops.size}/${lines.sumOf { it.size }}/${names.hashCode()}/$dark/$accent"
     AndroidView({ map }, modifier) { m ->
+        if (m.tag == key) return@AndroidView
+        m.tag = key
         m.overlayManager.tilesOverlay.setColorFilter(if (dark) TilesOverlay.INVERT_COLORS else null)
         m.overlays.clear()
-        val geo = lines.map { l -> l.map { GeoPoint(it.first, it.second) } }
+        val geo = thinRoutes(lines).map { l -> l.map { GeoPoint(it.first, it.second) } }
         geo.filter { it.size > 1 }.forEach { line ->
             m.overlays.add(Polyline().apply {
                 setPoints(line)
@@ -343,18 +381,33 @@ private fun RouteMap(
         }
         val density = m.resources.displayMetrics.density
         m.overlays.add(StopOverlay(stops.map { GeoPoint(it.lat, it.lon) }, names, accent, density, onTap))
+        here?.let { m.overlays.add(MeOverlay(GeoPoint(it.first, it.second), density)) }
         val all = geo.flatten() + stops.map { GeoPoint(it.lat, it.lon) }
-        val key = "$scope/${all.size}"
-        if (all.isNotEmpty() && m.tag != key) {
-            m.tag = key
-            if (all.size == 1 || all.all { it.latitude == all[0].latitude && it.longitude == all[0].longitude }) {
-                m.controller.setZoom(17.0)
-                m.controller.setCenter(all[0])
-            } else {
-                m.zoomToBoundingBox(BoundingBox.fromGeoPoints(all), false, (48 * density).toInt())
-            }
+        if (onMe && here != null) {
+            m.controller.setZoom(16.0)
+            m.controller.setCenter(GeoPoint(here.first, here.second))
+        } else if (all.size == 1 || (all.isNotEmpty() && all.all { it.latitude == all[0].latitude && it.longitude == all[0].longitude })) {
+            m.controller.setZoom(17.0)
+            m.controller.setCenter(all[0])
+        } else if (all.isNotEmpty()) {
+            m.zoomToBoundingBox(BoundingBox.fromGeoPoints(all), false, (48 * density).toInt())
         }
         m.invalidate()
+    }
+}
+
+private class MeOverlay(val p: GeoPoint, val density: Float) : Overlay() {
+    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x331A73E8 }
+    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A73E8.toInt() }
+
+    override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {
+        if (shadow) return
+        val pt = Point()
+        osmv.projection.toPixels(p, pt)
+        c.drawCircle(pt.x.toFloat(), pt.y.toFloat(), 26f * density, halo)
+        c.drawCircle(pt.x.toFloat(), pt.y.toFloat(), 10f * density, ring)
+        c.drawCircle(pt.x.toFloat(), pt.y.toFloat(), 7f * density, dot)
     }
 }
 

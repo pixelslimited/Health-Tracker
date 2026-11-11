@@ -43,6 +43,11 @@ object PlaceTracker : LocationListener {
         var aLat = 0.0
         var aLon = 0.0
         var legA = 0.0
+        var fLat = 0.0
+        var fLon = 0.0
+        var fTs = 0L
+        var dmDay = ""
+        var dm = 0.0
     }
 
     private var app: Context? = null
@@ -61,6 +66,33 @@ object PlaceTracker : LocationListener {
     fun hasPermission(c: Context) = granted(c, Manifest.permission.ACCESS_FINE_LOCATION) || granted(c, Manifest.permission.ACCESS_COARSE_LOCATION)
     fun hasBackground(c: Context) = Build.VERSION.SDK_INT < 29 || granted(c, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
     fun canRun(c: Context) = enabled(c) && hasPermission(c)
+
+    /** Metres travelled so far today, updated on every fix. */
+    fun todayMetres(c: Context): Double {
+        val p = sp(c)
+        return if (p.getString("dmDay", "") == java.time.LocalDate.now().toString()) p.getString("dm", "0")?.toDoubleOrNull() ?: 0.0 else 0.0
+    }
+
+    /** Newest known position: our own last fix or any provider's last known location. Instant, no waiting for GPS. */
+    @SuppressLint("MissingPermission")
+    fun lastFix(c: Context): Pair<Double, Double>? {
+        val p = sp(c)
+        var lat = p.getString("fLat", "")?.toDoubleOrNull()
+        var lon = p.getString("fLon", "")?.toDoubleOrNull()
+        var ts = p.getLong("fTs", 0L)
+        if (hasPermission(c)) {
+            try {
+                val m = c.getSystemService(LocationManager::class.java)
+                for (name in listOf("fused", "gps", "network", "passive")) {
+                    if (name !in m.allProviders) continue
+                    val l = m.getLastKnownLocation(name) ?: continue
+                    if (l.time > ts) { ts = l.time; lat = l.latitude; lon = l.longitude }
+                }
+            } catch (e: Exception) {
+            }
+        }
+        return if (lat != null && lon != null) lat to lon else null
+    }
 
     /** Arrival time if you are standing at a stop right now, else 0. */
     fun hereSince(c: Context): Long {
@@ -129,6 +161,9 @@ object PlaceTracker : LocationListener {
         val lat = l.latitude
         val lon = l.longitude
         val s = st
+        s.fLat = lat; s.fLon = lon; s.fTs = now
+        val today = java.time.LocalDate.now().toString()
+        if (s.dmDay != today) { s.dmDay = today; s.dm = 0.0 }
         if (!s.hasPrev) {
             s.hasPrev = true
             s.pLat = lat
@@ -138,6 +173,7 @@ object PlaceTracker : LocationListener {
         } else {
             val d = metresBetween(s.pLat, s.pLon, lat, lon)
             if (d >= STEP) {
+                s.dm += d
                 s.leg += d
                 s.pLat = lat
                 s.pLon = lon
@@ -208,6 +244,11 @@ object PlaceTracker : LocationListener {
         s.aLat = p.getString("aLat", "0")?.toDoubleOrNull() ?: 0.0
         s.aLon = p.getString("aLon", "0")?.toDoubleOrNull() ?: 0.0
         s.legA = p.getString("legA", "0")?.toDoubleOrNull() ?: 0.0
+        s.fLat = p.getString("fLat", "0")?.toDoubleOrNull() ?: 0.0
+        s.fLon = p.getString("fLon", "0")?.toDoubleOrNull() ?: 0.0
+        s.fTs = p.getLong("fTs", 0L)
+        s.dmDay = p.getString("dmDay", "") ?: ""
+        s.dm = p.getString("dm", "0")?.toDoubleOrNull() ?: 0.0
         st = s
     }
 
@@ -215,6 +256,8 @@ object PlaceTracker : LocationListener {
         val s = st
         sp(c).edit().putBoolean("hasPrev", s.hasPrev).putString("pLat", s.pLat.toString()).putString("pLon", s.pLon.toString())
             .putString("leg", s.leg.toString()).putLong("aSince", s.aSince).putLong("aLast", s.aLast)
-            .putString("aLat", s.aLat.toString()).putString("aLon", s.aLon.toString()).putString("legA", s.legA.toString()).apply()
+            .putString("aLat", s.aLat.toString()).putString("aLon", s.aLon.toString()).putString("legA", s.legA.toString())
+            .putString("fLat", s.fLat.toString()).putString("fLon", s.fLon.toString()).putLong("fTs", s.fTs)
+            .putString("dmDay", s.dmDay).putString("dm", s.dm.toString()).apply()
     }
 }

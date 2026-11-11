@@ -289,4 +289,6 @@
     <string name="pl_top">Most visited</string>
     <string name="pl_visits">%1$d visits, %2$s</string>
     <string name="pl_day_row">%1$s: %2$d stops, %3$s</string>
+    <string name="tab_move">Move</string>
+    <string name="places_locate">My location</string>
 </resources>

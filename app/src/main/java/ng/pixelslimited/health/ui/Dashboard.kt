@@ -91,8 +91,6 @@ private fun Tile(title: String, e: Entry?, values: List<Float>, modifier: Modifi
 @Composable
 fun Today(me: Profile, open: (Int) -> Unit, save: (Entry) -> Unit) {
     val ctx = LocalContext.current
-    var cat by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
-    var training by remember { mutableStateOf(false) }
     val today = LocalDate.now()
     val steps = me.steps[today.toString()] ?: 0
     // Each new step presses the number down and lets it spring back.
@@ -107,7 +105,6 @@ fun Today(me: Profile, open: (Int) -> Unit, save: (Entry) -> Unit) {
     }
     val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
     val big = (wide * 0.26f).coerceIn(56f, 96f)
-    val week = weekSteps(me, today)
     var granted by remember { mutableStateOf(StepService.canRun(ctx)) }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted = StepService.canRun(ctx) }
     LaunchedEffect(granted) { if (granted) StepService.start(ctx) }
@@ -157,21 +154,38 @@ fun Today(me: Profile, open: (Int) -> Unit, save: (Entry) -> Unit) {
             row.forEach { t -> t(Modifier.weight(1f)) }
         }
     }
+    val (stopCount, metres, _) = rememberPlaceToday(me)
+    val workDone = remember(me.entries) { me.since(T.WORK, dayStart(today)).sumOf { it.a }.toInt() }
+    Section(s(R.string.tab_move)) {
+        Stat(s(R.string.t_work), ctx.getString(R.string.n_drills, workDone))
+        Stat(s(R.string.places), ctx.getString(R.string.places_summary, stopCount, distanceText(ctx, metres)))
+        OutlinedButton(onClick = { open(3) }) { Text(s(R.string.tab_move)) }
+    }
+    val water = me.since(T.WATER, dayStart(today)).sumOf { it.a }.toInt()
+    Section(s(R.string.t_water)) {
+        Stat(s(R.string.today), ctx.getString(R.string.of_total, water, me.waterGoal))
+        SegBar(water.toFloat() / me.waterGoal)
+        Button(onClick = { save(Entry(T.WATER, now(), 250.0)) }) { Text(s(R.string.add_glass)) }
+    }
+}
+
+/** Everything about moving: today's workout, places and routes, and the week's steps. */
+@Composable
+fun Move(me: Profile, save: (Entry) -> Unit) {
+    val ctx = LocalContext.current
+    var cat by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
+    var training by remember { mutableStateOf(false) }
+    val today = LocalDate.now()
+    val week = weekSteps(me, today)
+    WorkoutBlock(me, me.since(T.WORK, dayStart(today)).sumOf { it.a }.toInt(), { training = true }, cat) { cat = it }
+    if (training) WorkoutDialog(cat, Workouts.plan(cat, me.fitLevel, Workouts.programDay(me.fitStart), Workouts.adjust(me)), { training = false }) { it.forEach(save); training = false }
+    PlacesBlock(me)
     Section(s(R.string.this_week)) {
         DayStrip(week, me.dailyGoal, dayLabels(), today.dayOfWeek.value - 1, s(R.string.week_desc))
         Stat(s(R.string.goal), ctx.getString(R.string.of_total, week.sum(), me.weeklyGoal))
         Stat(s(R.string.distance), distanceText(ctx, me.metres(week.sum())))
         SegBar(week.sum().toFloat() / me.weeklyGoal)
         Stat(s(R.string.streak), ctx.getString(R.string.f_days, streak(me, today)))
-    }
-    WorkoutBlock(me, me.since(T.WORK, dayStart(today)).sumOf { it.a }.toInt(), { training = true }, cat) { cat = it }
-    if (training) WorkoutDialog(cat, Workouts.plan(cat, me.fitLevel, Workouts.programDay(me.fitStart), Workouts.adjust(me)), { training = false }) { it.forEach(save); training = false }
-    PlacesBlock(me)
-    val water = me.since(T.WATER, dayStart(today)).sumOf { it.a }.toInt()
-    Section(s(R.string.t_water)) {
-        Stat(s(R.string.today), ctx.getString(R.string.of_total, water, me.waterGoal))
-        SegBar(water.toFloat() / me.waterGoal)
-        Button(onClick = { save(Entry(T.WATER, now(), 250.0)) }) { Text(s(R.string.add_glass)) }
     }
 }
 
