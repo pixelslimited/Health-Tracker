@@ -304,6 +304,7 @@ fun AddFlow(me: Profile, mode: String, set: (String) -> Unit, save: (Entry) -> U
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(
+                        "food" to s(R.string.scan_food),
                         "hr" to s(R.string.measure_hr),
                         "hrm" to s(R.string.t_hr) + " - " + s(R.string.manual),
                         "bp" to s(R.string.t_bp),
@@ -321,6 +322,7 @@ fun AddFlow(me: Profile, mode: String, set: (String) -> Unit, save: (Entry) -> U
             confirmButton = {},
             dismissButton = { TextButton(onClick = close) { Text(s(R.string.cancel)) } },
         )
+        "food" -> FoodScan(onClose = close) { done(it) }
         "hr" -> MeasureHr(onDone = { done(Entry(T.HR, now(), it.toDouble())) }, onClose = close)
         "hrm" -> RulerDialog(s(R.string.t_hr), listOf(RulerSpec(s(R.string.unit_bpm), 30..220, 1, 72)), onClose = close) { v, _ ->
             done(Entry(T.HR, now(), v[0].toDouble()))
@@ -375,6 +377,8 @@ fun LogSections(me: Profile, onAdd: (String) -> Unit) {
     val carbs = me.since(T.MEAL, dayStart()).sumOf { it.a }.toInt()
     Section(s(R.string.t_meal)) {
         Stat(s(R.string.carbs_today), ctx.getString(R.string.f_carbs, carbs))
+        Stat(s(R.string.cal_today), ctx.getString(R.string.f_kcal, me.since(T.MEAL, dayStart()).sumOf { it.b }.toInt()))
+        OutlinedButton(onClick = { onAdd("food") }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.scan_food)) }
         OutlinedButton(onClick = { onAdd("meal") }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.add)) }
     }
     Section(s(R.string.recent)) {

@@ -179,4 +179,19 @@
     <string name="bp_chart_desc">Upper and lower blood pressure for recent readings</string>
     <string name="glu_chart_desc">Recent glucose readings against your target range</string>
     <string name="week_desc">Days this week you reached your step goal</string>
+    <string name="scan_food">Scan food</string>
+    <string name="take_photo">Take photo</string>
+    <string name="pick_photo">Choose photo</string>
+    <string name="pick_food">Choose food</string>
+    <string name="analysing">Analysing the photo</string>
+    <string name="looks_like">This may be</string>
+    <string name="no_match">Food not recognised. Choose it from the list.</string>
+    <string name="portion_g">Portion</string>
+    <string name="calories">Calories</string>
+    <string name="protein">Protein</string>
+    <string name="fat">Fat</string>
+    <string name="cal_today">Calories today</string>
+    <string name="food_note">Estimate only. The camera recognises common fruits and dishes; check the food and set the portion yourself.</string>
+    <string name="f_kcal" translatable="false">%d kcal</string>
+    <string name="nutr_note" translatable="false">%1$s %2$d g (P %3$.1f g, F %4$.1f g)</string>
 </resources>

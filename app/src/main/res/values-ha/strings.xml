@@ -170,4 +170,17 @@
     <string name="bp_chart_desc">Hawan jini na sama da na kasa a baya-bayan nan</string>
     <string name="glu_chart_desc">Sakamakon sukari na baya-bayan nan da kewayon burinka</string>
     <string name="week_desc">Kwanakin mako da ka cika burin taki</string>
+    <string name="scan_food">Duba abinci</string>
+    <string name="take_photo">Dauki hoto</string>
+    <string name="pick_photo">Zabi hoto</string>
+    <string name="pick_food">Zabi abinci</string>
+    <string name="analysing">Ana bincike</string>
+    <string name="looks_like">Wannan na iya zama</string>
+    <string name="no_match">Ba a gane abincin ba. Zabi shi daga jerin.</string>
+    <string name="portion_g">Adadi</string>
+    <string name="calories">Kalori</string>
+    <string name="protein">Furotin</string>
+    <string name="fat">Mai</string>
+    <string name="cal_today">Kalori na yau</string>
+    <string name="food_note">Kiyasi ne kawai. Kyamara tana gane \'ya\'yan itace da abinci na yau da kullum; duba abincin ka saita adadin da kanka.</string>
 </resources>

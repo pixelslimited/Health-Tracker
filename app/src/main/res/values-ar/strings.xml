@@ -170,4 +170,17 @@
     <string name="bp_chart_desc">ضغط الدم الانقباضي والانبساطي للقراءات الأخيرة</string>
     <string name="glu_chart_desc">قراءات السكر الأخيرة مقابل نطاق هدفك</string>
     <string name="week_desc">أيام هذا الأسبوع التي حققت فيها هدف الخطوات</string>
+    <string name="scan_food">فحص الطعام</string>
+    <string name="take_photo">التقاط صورة</string>
+    <string name="pick_photo">اختيار صورة</string>
+    <string name="pick_food">اختيار طعام</string>
+    <string name="analysing">جارٍ تحليل الصورة</string>
+    <string name="looks_like">قد يكون هذا</string>
+    <string name="no_match">لم يتم التعرف على الطعام. اختره من القائمة.</string>
+    <string name="portion_g">الكمية</string>
+    <string name="calories">السعرات</string>
+    <string name="protein">البروتين</string>
+    <string name="fat">الدهون</string>
+    <string name="cal_today">سعرات اليوم</string>
+    <string name="food_note">تقدير فقط. تتعرف الكاميرا على الفواكه والأطباق الشائعة؛ تحقق من الطعام وحدد الكمية بنفسك.</string>
 </resources>

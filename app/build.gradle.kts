@@ -58,6 +58,7 @@ dependencies {
     implementation("androidx.camera:camera-core:1.4.1")
     implementation("androidx.camera:camera-camera2:1.4.1")
     implementation("androidx.camera:camera-lifecycle:1.4.1")
+    implementation("com.google.mlkit:image-labeling:17.0.9")
     implementation("com.google.guava:guava:33.3.1-android")
     implementation("androidx.health.connect:connect-client:1.1.0-alpha10")
     implementation("androidx.biometric:biometric:1.1.0")

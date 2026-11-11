@@ -101,7 +101,7 @@ fun Entry.value(ctx: Context): String = when (type) {
     T.WEIGHT -> ctx.getString(R.string.f_kg, a)
     T.SLEEP -> ctx.getString(R.string.f_hours, a)
     T.WATER -> ctx.getString(R.string.f_ml, a.toInt())
-    T.MEAL -> ctx.getString(R.string.f_carbs, a.toInt()) + if (note.isBlank()) "" else " - $note"
+    T.MEAL -> ctx.getString(R.string.f_carbs, a.toInt()) + (if (b > 0) " / " + ctx.getString(R.string.f_kcal, b.toInt()) else "") + if (note.isBlank()) "" else " - $note"
     else -> ctx.getString(R.string.f_pct, a)
 }
 
