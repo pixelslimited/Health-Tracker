@@ -118,7 +118,7 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
             Button(onClick = { ask.launch(StepService.perms()) }) { Text(s(R.string.enable)) }
         }
     }
-    Block {
+    Block(fill = steps.toFloat() / me.dailyGoal.coerceAtLeast(1)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(s(R.string.steps), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Text(
@@ -253,7 +253,7 @@ fun SleepScreen(me: Profile, save: (Entry) -> Unit, onAdd: (String) -> Unit) {
     val last = me.last(T.SLEEP)
     val hours = last?.a ?: 0.0
     val week = me.since(T.SLEEP, now() - 7 * 86400000L)
-    Block {
+    Block(fill = if (last == null) -1f else (hours / me.sleepGoal).toFloat()) {
         Text(s(R.string.last_sleep), style = MaterialTheme.typography.titleMedium)
         Text(
             if (last == null) s(R.string.none) else durationText(ctx, hours),

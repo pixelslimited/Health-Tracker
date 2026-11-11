@@ -2,6 +2,7 @@ package ng.pixelslimited.health.ui
 
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -51,10 +52,11 @@ fun rememberGrow(): Float {
 
 /** Bordered tile on the soft surface. */
 @Composable
-fun Block(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun Block(modifier: Modifier = Modifier, fill: Float = -1f, content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier.fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .liquid(fill)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -321,5 +323,35 @@ fun PulseWave(wave: List<Float>) {
         drawPath(path, ink, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         drawCircle(accent.copy(alpha = 0.35f * (1f - beat)), (7f + 14f * beat).dp.toPx(), at(wave.size - 1))
         drawCircle(accent, 7.dp.toPx(), at(wave.size - 1))
+    }
+}
+
+/** Fills the block from the bottom like a liquid up to [level] (0 to 1), with two slowly moving wave surfaces. Negative turns it off. */
+@Composable
+fun Modifier.liquid(level: Float): Modifier {
+    if (level < 0f) return this
+    val accent = MaterialTheme.colorScheme.primary
+    val target by androidx.compose.animation.core.animateFloatAsState(level.coerceIn(0f, 1f), androidx.compose.animation.core.tween(1400), label = "level")
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "liquid")
+    val a by t.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(4200, easing = androidx.compose.animation.core.LinearEasing)), label = "a")
+    val b by t.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(6300, easing = androidx.compose.animation.core.LinearEasing)), label = "b")
+    return drawBehind {
+        if (target <= 0.005f) return@drawBehind
+        val base = size.height * (1f - target)
+        val amp = if (target >= 0.995f) 0f else 5.dp.toPx()
+        fun surface(phase: Float, freq: Float, h: Float): Path {
+            val p = Path()
+            p.moveTo(0f, size.height)
+            var x = 0f
+            while (x <= size.width + 8f) {
+                p.lineTo(x, base + kotlin.math.sin(x / size.width * 6.2832f * freq + phase * 6.2832f) * h)
+                x += 8f
+            }
+            p.lineTo(size.width, size.height)
+            p.close()
+            return p
+        }
+        drawPath(surface(1f - b, 1.2f, amp * 0.8f), accent.copy(alpha = 0.12f))
+        drawPath(surface(a, 1.6f, amp), accent.copy(alpha = 0.2f))
     }
 }
