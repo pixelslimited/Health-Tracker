@@ -282,15 +282,16 @@ fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (
 
 /** Live pulse trace: the line scrolls as the finger signal arrives and a dot rides its newest point. */
 @Composable
-fun PulseWave(wave: List<Float>) {
+fun PulseWave(wave: List<Float>, bpm: Int = 60) {
+    val period = (60000 / bpm.coerceIn(30, 200))
     val ink = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
     val line = MaterialTheme.colorScheme.outlineVariant
     val beat by androidx.compose.animation.core.rememberInfiniteTransition(label = "beat").animateFloat(
-        0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900)), label = "ring",
+        0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(period)), label = "ring",
     )
     val phase by androidx.compose.animation.core.rememberInfiniteTransition(label = "ecg").animateFloat(
-        0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1000, easing = androidx.compose.animation.core.LinearEasing)), label = "scroll",
+        0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(period, easing = androidx.compose.animation.core.LinearEasing)), label = "scroll",
     )
     Canvas(Modifier.fillMaxWidth().height(96.dp)) {
         drawLine(line, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = 1.dp.toPx())

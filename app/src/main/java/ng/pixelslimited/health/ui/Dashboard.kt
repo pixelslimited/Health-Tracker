@@ -191,7 +191,7 @@ fun Vitals(me: Profile, onAdd: (String) -> Unit) {
             LevelText(level(e))
             Text(ctx.getString(R.string.measured_at, whenText(e.ts)), style = MaterialTheme.typography.bodyMedium, color = muted)
         }
-        LineChart(me.series(T.HR))
+        PulseWave(emptyList(), e?.a?.toInt() ?: 60)
         Button(onClick = { onAdd("hr") }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.measure)) }
         OutlinedButton(onClick = { onAdd("hrm") }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.add)) }
     }
