@@ -12,6 +12,8 @@ import android.view.MotionEvent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,9 +22,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -51,6 +55,10 @@ import ng.pixelslimited.health.data.Stop
 import ng.pixelslimited.health.data.Store
 import ng.pixelslimited.health.data.T
 import ng.pixelslimited.health.data.autoLabels
+import ng.pixelslimited.health.data.metresBetween
+import ng.pixelslimited.health.data.routesBetween
+import ng.pixelslimited.health.data.stopsBetween
+import ng.pixelslimited.health.data.thinRoutes
 import ng.pixelslimited.health.data.distanceText
 import ng.pixelslimited.health.data.nameLabels
 import ng.pixelslimited.health.data.placeName
@@ -107,17 +115,78 @@ fun PlacesBlock(me: Profile) {
     if (open) PlacesDialog(me) { open = false }
 }
 
+private class DayRow(val date: LocalDate, val stops: Int, val metres: Double)
+private class Top(val name: String, val lat: Double, val lon: Double, var visits: Int = 0, var ms: Long = 0)
+
 @Composable
 fun PlacesDialog(me: Profile, onClose: () -> Unit) {
     val ctx = LocalContext.current
-    var day by remember { mutableStateOf(LocalDate.now()) }
+    val today = LocalDate.now()
+    var mode by remember { mutableStateOf(0) }
+    var day by remember { mutableStateOf(today) }
+    var rFrom by remember { mutableStateOf(today.minusDays(6)) }
+    var rTo by remember { mutableStateOf(today) }
     var renaming by remember { mutableStateOf<Int?>(null) }
     var confirm by remember { mutableStateOf(false) }
-    val stops = remember(me.entries, day) { me.stopsOn(day) }
-    val route = remember(me.routes, day) { me.routeOf(day) }
+    val from = when (mode) {
+        0 -> day
+        1 -> day.minusDays((day.dayOfWeek.value - 1).toLong())
+        2 -> day.withDayOfMonth(1)
+        3 -> day.withDayOfYear(1)
+        else -> rFrom
+    }
+    val to = when (mode) {
+        0 -> day
+        1 -> from.plusDays(6)
+        2 -> from.plusMonths(1).minusDays(1)
+        3 -> from.plusYears(1).minusDays(1)
+        else -> rTo
+    }
+    val stops = remember(me.entries, from, to) { me.stopsBetween(from, to) }
+    val lines = remember(me.routes, from, to) { me.routesBetween(from, to) }
     val auto = remember(me.entries) { me.autoLabels() }
     val names = stops.map { me.placeName(ctx, it, auto) }
-    val metres = routeMetres(route)
+    val zone = java.time.ZoneId.systemDefault()
+    val days = remember(stops, lines, from, to) {
+        val byDay = stops.groupBy { java.time.Instant.ofEpochMilli(it.arrive).atZone(zone).toLocalDate() }
+        val out = ArrayList<DayRow>()
+        var d = to
+        while (!d.isBefore(from)) {
+            val n = byDay[d]?.size ?: 0
+            val m = if (me.routes.containsKey(d.toString())) routeMetres(me.routeOf(d)) else 0.0
+            if (n > 0 || m > 0) out.add(DayRow(d, n, m))
+            d = d.minusDays(1)
+        }
+        out
+    }
+    val metres = days.sumOf { it.metres }
+    val top = remember(stops, auto) {
+        val out = ArrayList<Top>()
+        stops.forEach { st ->
+            val t = out.firstOrNull { metresBetween(it.lat, it.lon, st.lat, st.lon) < 150 } ?: Top(me.placeName(ctx, st, auto), st.lat, st.lon).also { out.add(it) }
+            t.visits++
+            t.ms += maxOf(0L, st.depart - st.arrive)
+        }
+        out.sortedByDescending { it.ms }.take(5)
+    }
+    val med = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+    val title = when (mode) {
+        0 -> day.format(med)
+        1, 4 -> from.format(med) + " - " + to.format(med)
+        2 -> from.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
+        else -> from.format(DateTimeFormatter.ofPattern("yyyy"))
+    }
+    fun shift(dir: Long) {
+        day = when (mode) {
+            0 -> day.plusDays(dir)
+            1 -> day.plusWeeks(dir)
+            2 -> day.plusMonths(dir)
+            else -> day.plusYears(dir)
+        }
+    }
+    fun pick(cur: LocalDate, set: (LocalDate) -> Unit) {
+        android.app.DatePickerDialog(ctx, { _, y, m, d -> set(LocalDate.of(y, m + 1, d)) }, cur.year, cur.monthValue - 1, cur.dayOfMonth).show()
+    }
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -126,31 +195,64 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
                     Text(s(R.string.places_title), Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
                     TextButton(onClick = onClose) { Text(s(R.string.close)) }
                 }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { day = day.minusDays(1) }) { Text(s(R.string.day_prev)) }
-                    Text(
-                        day.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)), Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
-                    OutlinedButton(onClick = { if (day < LocalDate.now()) day = day.plusDays(1) }) { Text(s(R.string.day_next)) }
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(R.string.pl_day, R.string.pl_week, R.string.pl_month, R.string.pl_year, R.string.pl_range).forEachIndexed { i, label ->
+                        FilterChip(selected = mode == i, onClick = { mode = i }, label = { Text(s(label)) })
+                    }
+                }
+                if (mode == 4) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { pick(rFrom) { rFrom = it; if (rTo.isBefore(it)) rTo = it } }, modifier = Modifier.weight(1f)) { Text(s(R.string.pl_from) + " " + rFrom.format(med)) }
+                        OutlinedButton(onClick = { pick(rTo) { rTo = it; if (rFrom.isAfter(it)) rFrom = it } }, modifier = Modifier.weight(1f)) { Text(s(R.string.pl_to) + " " + rTo.format(med)) }
+                    }
+                } else {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { shift(-1) }) { Text(s(R.string.day_prev)) }
+                        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        OutlinedButton(onClick = { if (to.isBefore(today)) shift(1) }) { Text(s(R.string.day_next)) }
+                    }
                 }
                 Text(ctx.getString(R.string.places_summary, stops.size, distanceText(ctx, metres)), style = MaterialTheme.typography.titleLarge)
                 RouteMap(
-                    route, stops, names, dark, MaterialTheme.colorScheme.primary.toArgb(), { renaming = it },
+                    thinRoutes(lines), stops, names, dark, MaterialTheme.colorScheme.primary.toArgb(), "$from/$to/$mode", { renaming = it },
                     Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(12.dp)),
                 )
                 LazyColumn(Modifier.weight(1f)) {
-                    if (stops.isEmpty()) item { Text(s(R.string.places_none), Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    itemsIndexed(stops) { i, st ->
-                        Column(Modifier.fillMaxWidth().clickable { renaming = i }.padding(vertical = 8.dp)) {
-                            Text("${i + 1}. ${names[i]}", style = MaterialTheme.typography.titleMedium)
-                            Text("${timeText(st.arrive)} - ${timeText(st.depart)}", style = MaterialTheme.typography.bodyLarge)
-                            if (st.metres > 0) Text(ctx.getString(R.string.places_from_prev, distanceText(ctx, st.metres)), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(
-                                String.format(Locale.US, "%.5f, %.5f", st.lat, st.lon),
-                                Modifier.clickable { openInMaps(ctx, st, names[i]) },
-                                style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline,
-                            )
+                    if (stops.isEmpty() && days.isEmpty()) item { Text(s(R.string.places_none), Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    if (mode == 0) {
+                        itemsIndexed(stops) { i, st ->
+                            Column(Modifier.fillMaxWidth().clickable { renaming = i }.padding(vertical = 8.dp)) {
+                                Text("${i + 1}. ${names[i]}", style = MaterialTheme.typography.titleMedium)
+                                Text("${timeText(st.arrive)} - ${timeText(st.depart)}", style = MaterialTheme.typography.bodyLarge)
+                                if (st.metres > 0) Text(ctx.getString(R.string.places_from_prev, distanceText(ctx, st.metres)), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    String.format(Locale.US, "%.5f, %.5f", st.lat, st.lon),
+                                    Modifier.clickable { openInMaps(ctx, st, names[i]) },
+                                    style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline,
+                                )
+                            }
+                        }
+                    } else {
+                        if (top.isNotEmpty()) {
+                            item { Text(s(R.string.pl_top), Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleMedium) }
+                            items(top.size) { i ->
+                                val t = top[i]
+                                Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                                    Text(t.name, style = MaterialTheme.typography.bodyLarge)
+                                    Text(ctx.getString(R.string.pl_visits, t.visits, ctx.getString(R.string.f_hours, t.ms / 3_600_000.0)), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        if (days.isNotEmpty()) {
+                            item { Text(s(R.string.pl_days), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium) }
+                            items(days.size) { i ->
+                                val r = days[i]
+                                Text(
+                                    ctx.getString(R.string.pl_day_row, r.date.format(med), r.stops, distanceText(ctx, r.metres)),
+                                    Modifier.fillMaxWidth().clickable { day = r.date; mode = 0 }.padding(vertical = 8.dp),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
                         }
                     }
                     item { TextButton(onClick = { confirm = true }) { Text(s(R.string.places_delete)) } }
@@ -202,8 +304,8 @@ private fun openInMaps(ctx: android.content.Context, st: Stop, name: String) {
 /** Street map with the day's route drawn as a line and each stop as a numbered, labelled marker. */
 @Composable
 private fun RouteMap(
-    route: List<Pair<Double, Double>>, stops: List<Stop>, names: List<String>, dark: Boolean,
-    accent: Int, onTap: (Int) -> Unit, modifier: Modifier,
+    lines: List<List<Pair<Double, Double>>>, stops: List<Stop>, names: List<String>, dark: Boolean,
+    accent: Int, scope: String, onTap: (Int) -> Unit, modifier: Modifier,
 ) {
     val ctx = LocalContext.current
     val map = remember {
@@ -224,8 +326,8 @@ private fun RouteMap(
     AndroidView({ map }, modifier) { m ->
         m.overlayManager.tilesOverlay.setColorFilter(if (dark) TilesOverlay.INVERT_COLORS else null)
         m.overlays.clear()
-        val line = route.map { GeoPoint(it.first, it.second) }
-        if (line.size > 1) {
+        val geo = lines.map { l -> l.map { GeoPoint(it.first, it.second) } }
+        geo.filter { it.size > 1 }.forEach { line ->
             m.overlays.add(Polyline().apply {
                 setPoints(line)
                 outlinePaint.color = 0xCCFFFFFF.toInt()
@@ -241,8 +343,8 @@ private fun RouteMap(
         }
         val density = m.resources.displayMetrics.density
         m.overlays.add(StopOverlay(stops.map { GeoPoint(it.lat, it.lon) }, names, accent, density, onTap))
-        val all = line + stops.map { GeoPoint(it.lat, it.lon) }
-        val key = "${route.size}/${stops.size}/${all.firstOrNull()}"
+        val all = geo.flatten() + stops.map { GeoPoint(it.lat, it.lon) }
+        val key = "$scope/${all.size}"
         if (all.isNotEmpty() && m.tag != key) {
             m.tag = key
             if (all.size == 1 || all.all { it.latitude == all[0].latitude && it.longitude == all[0].longitude }) {
@@ -273,10 +375,16 @@ private class StopOverlay(
         val pr = osmv.projection
         val pt = Point()
         val r = 15f * density
+        val compact = pts.size > 30
         pts.forEachIndexed { i, g ->
             pr.toPixels(g, pt)
             val x = pt.x.toFloat()
             val y = pt.y.toFloat()
+            if (compact) {
+                c.drawCircle(x, y, 8f * density, ring)
+                c.drawCircle(x, y, 5f * density, dot)
+                return@forEachIndexed
+            }
             val label = labels.getOrElse(i) { "" }.let { if (it.length > 24) it.take(23) + "." else it }
             val w = txt.measureText(label)
             val box = RectF(x + r + 4 * density, y - 14 * density, x + r + 4 * density + w + 12 * density, y + 14 * density)

@@ -263,4 +263,15 @@
     <string name="day_next">اليوم التالي</string>
     <string name="t_stop">توقف</string>
     <string name="places_maps">فتح في الخرائط</string>
+    <string name="pl_day">يوم</string>
+    <string name="pl_week">أسبوع</string>
+    <string name="pl_month">شهر</string>
+    <string name="pl_year">سنة</string>
+    <string name="pl_range">نطاق</string>
+    <string name="pl_from">من</string>
+    <string name="pl_to">إلى</string>
+    <string name="pl_days">الأيام</string>
+    <string name="pl_top">الأكثر زيارة</string>
+    <string name="pl_visits">%1$d زيارات، %2$s</string>
+    <string name="pl_day_row">%1$s: %2$d توقفات، %3$s</string>
 </resources>

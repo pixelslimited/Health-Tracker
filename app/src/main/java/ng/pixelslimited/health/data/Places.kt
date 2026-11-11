@@ -94,3 +94,28 @@ fun nameLabels(old: List<String>, lat: Double, lon: Double, name: String): List<
     val clean = name.trim().replace("|", " ")
     return if (clean.isEmpty()) kept else kept + String.format(java.util.Locale.US, "%.5f|%.5f|%s", lat, lon, clean)
 }
+
+fun Profile.stopsBetween(from: LocalDate, to: LocalDate): List<Stop> {
+    val a = dayStart(from)
+    val b = dayStart(to.plusDays(1))
+    return entries.filter { it.type == T.STOP && it.ts >= a && it.ts < b }.sortedBy { it.ts }.map { it.toStop() }
+}
+
+/** One list of points per recorded day, so days are never joined by a line. */
+fun Profile.routesBetween(from: LocalDate, to: LocalDate): List<List<Pair<Double, Double>>> {
+    val out = ArrayList<List<Pair<Double, Double>>>()
+    var d = from
+    while (!d.isAfter(to)) {
+        if (routes.containsKey(d.toString())) out.add(routeOf(d))
+        d = d.plusDays(1)
+    }
+    return out
+}
+
+/** Keeps long ranges light to draw: at most about max points in total. */
+fun thinRoutes(r: List<List<Pair<Double, Double>>>, max: Int = 3000): List<List<Pair<Double, Double>>> {
+    val n = r.sumOf { it.size }
+    if (n <= max) return r
+    val k = (n + max - 1) / max
+    return r.map { l -> l.filterIndexed { i, _ -> i % k == 0 || i == l.lastIndex } }
+}

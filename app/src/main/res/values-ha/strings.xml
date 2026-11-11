@@ -263,4 +263,15 @@
     <string name="day_next">Rana ta gaba</string>
     <string name="t_stop">Tasha</string>
     <string name="places_maps">Bude a Taswira</string>
+    <string name="pl_day">Rana</string>
+    <string name="pl_week">Mako</string>
+    <string name="pl_month">Wata</string>
+    <string name="pl_year">Shekara</string>
+    <string name="pl_range">Tazara</string>
+    <string name="pl_from">Daga</string>
+    <string name="pl_to">Zuwa</string>
+    <string name="pl_days">Kwanaki</string>
+    <string name="pl_top">Wuraren da aka fi ziyarta</string>
+    <string name="pl_visits">Ziyara %1$d, %2$s</string>
+    <string name="pl_day_row">%1$s: tasha %2$d, %3$s</string>
 </resources>
