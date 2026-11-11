@@ -291,4 +291,8 @@
     <string name="pl_day_row">%1$s: %2$d stops, %3$s</string>
     <string name="tab_move">Move</string>
     <string name="places_locate">My location</string>
+    <string name="keep_alive">Keep counting</string>
+    <string name="keep_alive_desc">Some phones stop apps to save battery. Allow Health Tracker to run unrestricted so steps and places keep recording with the app closed.</string>
+    <string name="allow_btn">Allow</string>
+    <string name="exact_alarm_desc">Allow exact alarms so reminders ring at the set time.</string>
 </resources>

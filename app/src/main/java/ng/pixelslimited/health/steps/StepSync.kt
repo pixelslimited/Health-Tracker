@@ -23,18 +23,32 @@ object StepSync {
     }
 
     /** The hardware counter keeps counting while the app is stopped; read it once to add those steps. */
-    fun catchUp(ctx: Context) {
-        if (!StepService.canRun(ctx)) return
+    fun catchUp(ctx: Context, done: () -> Unit = {}) {
+        if (!StepService.canRun(ctx)) { done(); return }
         val sm = ctx.getSystemService(SensorManager::class.java)
-        val sensor = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) ?: return
+        val sensor = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+        if (sensor == null) { done(); return }
         val once = object : SensorEventListener {
+            var finished = false
+
             override fun onSensorChanged(e: SensorEvent) {
+                if (finished) return
+                finished = true
                 sm.unregisterListener(this)
                 apply(ctx, e.values[0].toLong())
+                done()
             }
 
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
         sm.registerListener(once, sensor, SensorManager.SENSOR_DELAY_FASTEST)
+        // If the sensor gives nothing in a few seconds, stop waiting.
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (!once.finished) {
+                once.finished = true
+                sm.unregisterListener(once)
+                done()
+            }
+        }, 8000)
     }
 }

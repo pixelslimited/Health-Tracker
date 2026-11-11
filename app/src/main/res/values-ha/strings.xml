@@ -276,4 +276,8 @@
     <string name="pl_day_row">%1$s: tasha %2$d, %3$s</string>
     <string name="tab_move">Motsi</string>
     <string name="places_locate">Wurina</string>
+    <string name="keep_alive">Ci gaba da ƙirga</string>
+    <string name="keep_alive_desc">Wasu wayoyi suna rufe manhajoji don adana batir. Bari Health Tracker ya yi aiki ba tare da iyaka ba domin matakai da wurare su ci gaba da rubutuwa ko da an rufe manhajar.</string>
+    <string name="allow_btn">Bada izini</string>
+    <string name="exact_alarm_desc">Bada izinin ƙararrawa daidai lokaci domin tunatarwa ta yi ƙara a lokacin da aka saita.</string>
 </resources>

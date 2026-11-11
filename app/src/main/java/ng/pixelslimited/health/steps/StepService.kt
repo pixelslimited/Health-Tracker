@@ -14,6 +14,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
+import android.widget.RemoteViews
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import ng.pixelslimited.health.App
@@ -103,12 +104,24 @@ class StepService : Service(), SensorEventListener {
         val me = Store.data.value.me
         val steps = me.steps[LocalDate.now().toString()] ?: 0
         val text = summary(this, me)
-        val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val title = getString(R.string.steps_today, steps, me.dailyGoal)
+        val open = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        fun card(big: Boolean) = RemoteViews(packageName, R.layout.notif_card).apply {
+            setImageViewBitmap(R.id.card, StepCard.render(this@StepService, me, big))
+            setContentDescription(R.id.card, title)
+            setOnClickPendingIntent(R.id.card, open)
+        }
         return Notification.Builder(this, App.CH_STEPS)
             .setSmallIcon(R.drawable.ic_stat)
-            .setContentTitle(getString(R.string.steps_today, steps, me.dailyGoal))
+            .setContentTitle(title)
             .setContentText(text.substringBefore('\n'))
-            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setStyle(Notification.DecoratedCustomViewStyle())
+            .setCustomContentView(card(false))
+            .setCustomBigContentView(card(true))
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setOnlyAlertOnce(true)
             .setContentIntent(open)

@@ -122,6 +122,26 @@ fun Settings(data: AppData, me: Profile) {
             }
         }
         OutlinedButton(onClick = { dlg = "reminder" }) { Text(s(R.string.add_reminder)) }
+        if (!Reminders.canExact(ctx)) {
+            Text(s(R.string.exact_alarm_desc), style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = {
+                if (Build.VERSION.SDK_INT >= 31) ctx.startActivity(
+                    Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }) { Text(s(R.string.allow_btn)) }
+        }
+    }
+
+    var batteryOk by remember { mutableStateOf(ctx.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName)) }
+    if (!batteryOk) Section(s(R.string.keep_alive)) {
+        Text(s(R.string.keep_alive_desc), style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick = {
+            try {
+                ctx.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: Exception) {
+            }
+            batteryOk = true
+        }) { Text(s(R.string.allow_btn)) }
     }
 
     Section(s(R.string.emergency)) {
