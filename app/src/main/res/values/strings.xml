@@ -257,4 +257,5 @@
     <string name="distance">Distance</string>
     <string name="f_m" translatable="false">%d m</string>
     <string name="f_km" translatable="false">%.2f km</string>
+    <string name="update_short">Update</string>
 </resources>

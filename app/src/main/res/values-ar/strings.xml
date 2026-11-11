@@ -242,4 +242,5 @@
     <string name="rev_hard">صعب جداً</string>
     <string name="review_hint">إجابتك تحدد مستوى الصعوبة من الغد.</string>
     <string name="distance">المسافة</string>
+    <string name="update_short">تحديث</string>
 </resources>

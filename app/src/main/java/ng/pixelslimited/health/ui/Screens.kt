@@ -23,6 +23,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -113,6 +115,7 @@ fun AppRoot() {
     var settings by rememberSaveable { mutableStateOf(false) }
     var add by remember { mutableStateOf("") }
     var release by remember { mutableStateOf<Updater.Release?>(null) }
+    var dismissed by rememberSaveable { mutableStateOf(false) }
     var alert by remember { mutableStateOf<Entry?>(null) }
     val appCtx = LocalContext.current.applicationContext
     LaunchedEffect(Unit) { release = Updater.check() }
@@ -135,8 +138,9 @@ fun AppRoot() {
             if (!settings) BottomBar(titles.map { s(it) }, tab, s(R.string.add), { tab = it }, { add = "pick" })
         }
     ) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) {
         Column(
-            Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState())
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp).fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -151,9 +155,6 @@ fun AppRoot() {
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(if (settings) Icons.Filled.Close else Icons.Filled.Settings, contentDescription = s(R.string.settings))
-                    if (release != null && !settings) {
-                        Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(10.dp).background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
-                    }
                 }
             }
             AnimatedContent(
@@ -172,9 +173,49 @@ fun AppRoot() {
                 }
             }
         }
+        androidx.compose.animation.AnimatedVisibility(
+            visible = release != null && !dismissed,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = androidx.compose.animation.slideInVertically(tween(300)) { it } + fadeIn(tween(300)),
+            exit = androidx.compose.animation.slideOutVertically(tween(200)) { it } + fadeOut(tween(200)),
+        ) {
+            release?.let { FloatingUpdate(it) { dismissed = true } }
+        }
+        }
     }
     AddFlow(me, add, { add = it }, save)
     alert?.let { EmergencyDialog(me, it) { alert = null } }
+}
+
+/** Floating pill above the tab bar: new version, one tap to download and install, or dismiss for now. */
+@Composable
+fun FloatingUpdate(release: Updater.Release, onDismiss: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var progress by remember { mutableStateOf(-1f) }
+    val fg = MaterialTheme.colorScheme.onSurface
+    val bg = MaterialTheme.colorScheme.surface
+    Column(
+        Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
+            .shadow(8.dp, RoundedCornerShape(8.dp)).background(fg, RoundedCornerShape(8.dp)).padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(s(R.string.update_available), color = bg, style = MaterialTheme.typography.titleSmall)
+                Text("v" + release.code, color = bg.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
+            }
+            TextButton(enabled = progress < 0f, onClick = {
+                progress = 0f
+                scope.launch {
+                    val apk = Updater.download(ctx, release.url) { progress = it }
+                    progress = -1f
+                    if (apk == null) toast(ctx, ctx.getString(R.string.update_failed)) else Updater.install(ctx, apk)
+                }
+            }) { Text(s(R.string.update_short), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
+            IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = s(R.string.close), tint = bg) }
+        }
+        if (progress >= 0f) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(end = 12.dp, bottom = 4.dp))
+    }
 }
 
 @Composable
