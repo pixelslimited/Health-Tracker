@@ -282,7 +282,7 @@ fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (
 
 /** Live pulse trace: the line scrolls as the finger signal arrives and a dot rides its newest point. */
 @Composable
-fun PulseWave(wave: List<Float>, bpm: Int = 60) {
+fun PulseWave(wave: List<Float>, bpm: Int = 60, height: androidx.compose.ui.unit.Dp = 96.dp) {
     val period = (60000 / bpm.coerceIn(30, 200))
     val ink = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
@@ -293,7 +293,8 @@ fun PulseWave(wave: List<Float>, bpm: Int = 60) {
     val phase by androidx.compose.animation.core.rememberInfiniteTransition(label = "ecg").animateFloat(
         0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(period, easing = androidx.compose.animation.core.LinearEasing)), label = "scroll",
     )
-    Canvas(Modifier.fillMaxWidth().height(96.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(height)) {
+        val k = (size.height / 96.dp.toPx()).coerceIn(0.4f, 1f)
         drawLine(line, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = 1.dp.toPx())
         if (wave.size < 2) {
             // No finger yet: a steady heartbeat trace keeps running, with the dot riding its leading edge.
@@ -302,7 +303,7 @@ fun PulseWave(wave: List<Float>, bpm: Int = 60) {
                 return g(0.15f, 0.04f, 0.12f) + g(0.31f, 0.012f, -0.15f) + g(0.35f, 0.014f, 1f) + g(0.39f, 0.012f, -0.3f) + g(0.62f, 0.06f, 0.25f)
             }
             val n = 120
-            val amp = size.height / 2 - 8.dp.toPx()
+            val amp = size.height / 2 - 8.dp.toPx() * k
             val idle = Path()
             var tip = Offset.Zero
             for (i in 0..n) {
@@ -312,18 +313,18 @@ fun PulseWave(wave: List<Float>, bpm: Int = 60) {
                 tip = pt
             }
             drawPath(idle, ink, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-            drawCircle(accent.copy(alpha = 0.35f * (1f - beat)), (7f + 14f * beat).dp.toPx(), tip)
-            drawCircle(accent, 7.dp.toPx(), tip)
+            drawCircle(accent.copy(alpha = 0.35f * (1f - beat)), (7f + 14f * beat).dp.toPx() * k, tip)
+            drawCircle(accent, 7.dp.toPx() * k, tip)
             return@Canvas
         }
-        val pad = 8.dp.toPx()
+        val pad = 8.dp.toPx() * k
         val h = size.height / 2 - pad
         fun at(i: Int) = Offset(size.width * i / 149f, size.height / 2 - wave[i] * h)
         val path = Path()
         wave.indices.forEach { i -> if (i == 0) path.moveTo(at(i).x, at(i).y) else path.lineTo(at(i).x, at(i).y) }
         drawPath(path, ink, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawCircle(accent.copy(alpha = 0.35f * (1f - beat)), (7f + 14f * beat).dp.toPx(), at(wave.size - 1))
-        drawCircle(accent, 7.dp.toPx(), at(wave.size - 1))
+        drawCircle(accent.copy(alpha = 0.35f * (1f - beat)), (7f + 14f * beat).dp.toPx() * k, at(wave.size - 1))
+        drawCircle(accent, 7.dp.toPx() * k, at(wave.size - 1))
     }
 }
 

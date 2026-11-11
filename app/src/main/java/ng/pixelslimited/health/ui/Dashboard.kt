@@ -74,7 +74,7 @@ private fun Entry.short(ctx: android.content.Context): String = when (type) {
 private fun dayLabels(): List<String> = DayOfWeek.values().map { it.getDisplayName(java.time.format.TextStyle.NARROW, Locale.getDefault()) }
 
 @Composable
-private fun Tile(title: String, e: Entry?, values: List<Float>, modifier: Modifier, onClick: () -> Unit) {
+private fun Tile(title: String, e: Entry?, values: List<Float>, modifier: Modifier, live: Boolean = false, onClick: () -> Unit) {
     val ctx = LocalContext.current
     Block(modifier.clickable(onClick = onClick)) {
         Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
@@ -83,7 +83,7 @@ private fun Tile(title: String, e: Entry?, values: List<Float>, modifier: Modifi
             style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
         )
         if (e != null && e.type != T.SLEEP && level(e) != Level.OK) LevelText(level(e))
-        Spark(values)
+        if (live) PulseWave(emptyList(), e?.a?.toInt() ?: 60, 32.dp) else Spark(values)
     }
 }
 
@@ -142,7 +142,7 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
     // Two columns on normal screens, one on very narrow ones, four across on wide ones.
     val per = if (wide < 340) 1 else if (wide >= 600) 4 else 2
     val tiles: List<@Composable (Modifier) -> Unit> = listOf(
-        { m -> Tile(s(R.string.t_hr), me.last(T.HR), me.series(T.HR), m) { open(1) } },
+        { m -> Tile(s(R.string.t_hr), me.last(T.HR), me.series(T.HR), m, live = true) { open(1) } },
         { m -> Tile(s(R.string.t_bp), me.last(T.BP), me.series(T.BP), m) { open(1) } },
         { m -> Tile(s(R.string.t_glu), me.last(T.GLU), me.series(T.GLU), m) { open(1) } },
         { m -> Tile(s(R.string.t_sleep), me.last(T.SLEEP), me.series(T.SLEEP), m) { open(2) } },
@@ -192,6 +192,7 @@ fun Vitals(me: Profile, onAdd: (String) -> Unit) {
             Text(ctx.getString(R.string.measured_at, whenText(e.ts)), style = MaterialTheme.typography.bodyMedium, color = muted)
         }
         PulseWave(emptyList(), e?.a?.toInt() ?: 60)
+        LineChart(me.series(T.HR))
         Button(onClick = { onAdd("hr") }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.measure)) }
         OutlinedButton(onClick = { onAdd("hrm") }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.add)) }
     }
