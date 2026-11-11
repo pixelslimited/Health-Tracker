@@ -287,9 +287,32 @@ fun PulseWave(wave: List<Float>) {
     val beat by androidx.compose.animation.core.rememberInfiniteTransition(label = "beat").animateFloat(
         0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900)), label = "ring",
     )
+    val phase by androidx.compose.animation.core.rememberInfiniteTransition(label = "ecg").animateFloat(
+        0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1000, easing = androidx.compose.animation.core.LinearEasing)), label = "scroll",
+    )
     Canvas(Modifier.fillMaxWidth().height(96.dp)) {
         drawLine(line, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = 1.dp.toPx())
-        if (wave.size < 2) return@Canvas
+        if (wave.size < 2) {
+            // No finger yet: a steady heartbeat trace keeps running, with the dot riding its leading edge.
+            fun beat(p: Float): Float {
+                fun g(c: Float, w: Float, a: Float) = a * kotlin.math.exp(-(((p - c) / w) * ((p - c) / w)))
+                return g(0.15f, 0.04f, 0.12f) + g(0.31f, 0.012f, -0.15f) + g(0.35f, 0.014f, 1f) + g(0.39f, 0.012f, -0.3f) + g(0.62f, 0.06f, 0.25f)
+            }
+            val n = 120
+            val amp = size.height / 2 - 8.dp.toPx()
+            val idle = Path()
+            var tip = Offset.Zero
+            for (i in 0..n) {
+                val pos = i / n.toFloat() * 2.5f + phase
+                val pt = Offset(size.width * i / n, size.height / 2 - beat(pos - kotlin.math.floor(pos)) * amp)
+                if (i == 0) idle.moveTo(pt.x, pt.y) else idle.lineTo(pt.x, pt.y)
+                tip = pt
+            }
+            drawPath(idle, ink, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawCircle(accent.copy(alpha = 0.35f * (1f - beat)), (7f + 14f * beat).dp.toPx(), tip)
+            drawCircle(accent, 7.dp.toPx(), tip)
+            return@Canvas
+        }
         val pad = 8.dp.toPx()
         val h = size.height / 2 - pad
         fun at(i: Int) = Offset(size.width * i / 149f, size.height / 2 - wave[i] * h)

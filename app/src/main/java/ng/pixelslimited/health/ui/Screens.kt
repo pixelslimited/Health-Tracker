@@ -238,7 +238,10 @@ fun MeasureHr(onDone: (Int) -> Unit, onClose: () -> Unit) {
                     cameraFailed -> Text(s(R.string.camera_failed))
                     bpm != null -> Text(ctx.getString(R.string.f_hr, bpm), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                     state.failed -> Text(s(R.string.hr_failed))
-                    !state.finger -> Text(s(R.string.hr_place_finger))
+                    !state.finger -> {
+                        Text(s(R.string.hr_place_finger))
+                        PulseWave(emptyList())
+                    }
                     else -> {
                         Text(s(R.string.hr_hold))
                         PulseWave(state.wave)
