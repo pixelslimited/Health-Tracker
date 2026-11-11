@@ -59,7 +59,6 @@ import ng.pixelslimited.health.data.weekSteps
 import ng.pixelslimited.health.data.whenText
 import ng.pixelslimited.health.heart.Hc
 import ng.pixelslimited.health.steps.StepService
-import ng.pixelslimited.health.update.Updater
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -90,7 +89,7 @@ private fun Tile(title: String, e: Entry?, values: List<Float>, modifier: Modifi
 }
 
 @Composable
-fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (Entry) -> Unit) {
+fun Today(me: Profile, open: (Int) -> Unit, save: (Entry) -> Unit) {
     val ctx = LocalContext.current
     var cat by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
     var training by remember { mutableStateOf(false) }
@@ -113,7 +112,6 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted = StepService.canRun(ctx) }
     LaunchedEffect(granted) { if (granted) StepService.start(ctx) }
 
-    if (release != null) UpdateCard(release)
     if (!StepService.hasSensor(ctx)) {
         Section(s(R.string.steps)) { Text(s(R.string.no_sensor)) }
     } else if (!granted) {

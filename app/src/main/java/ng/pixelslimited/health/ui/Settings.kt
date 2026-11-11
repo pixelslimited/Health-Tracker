@@ -59,6 +59,7 @@ fun Settings(data: AppData, me: Profile) {
     var dlg by remember { mutableStateOf("") }
     var remove by remember { mutableStateOf<Profile?>(null) }
     var release by remember { mutableStateOf<Updater.Release?>(null) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { release = Updater.check() }
 
     Section(s(R.string.profiles)) {
         data.profiles.forEach { p ->

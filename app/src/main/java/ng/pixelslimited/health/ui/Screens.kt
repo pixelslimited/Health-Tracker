@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -150,6 +151,9 @@ fun AppRoot() {
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(if (settings) Icons.Filled.Close else Icons.Filled.Settings, contentDescription = s(R.string.settings))
+                    if (release != null && !settings) {
+                        Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(10.dp).background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
+                    }
                 }
             }
             AnimatedContent(
@@ -160,7 +164,7 @@ fun AppRoot() {
                 Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                     when (page) {
                         -1 -> Settings(data, me)
-                        0 -> Today(me, release, { tab = it }, save)
+                        0 -> Today(me, { tab = it }, save)
                         1 -> Vitals(me) { add = it }
                         2 -> SleepScreen(me, save) { add = it }
                         else -> Reports(me) { add = it }
@@ -179,7 +183,9 @@ fun UpdateCard(release: Updater.Release) {
     val scope = rememberCoroutineScope()
     var progress by remember { mutableStateOf(-1f) }
     Section(s(R.string.update_available)) {
-        if (release.notes.isNotBlank()) Text(release.notes.take(300), style = MaterialTheme.typography.bodyMedium)
+        // Hide GitHub's automatic "Full Changelog" link line; show only real notes.
+        val notes = release.notes.lines().filterNot { it.contains("Full Changelog", ignoreCase = true) }.joinToString("\n").trim()
+        if (notes.isNotBlank()) Text(notes.take(300), style = MaterialTheme.typography.bodyMedium)
         if (progress >= 0f) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
         Button(enabled = progress < 0f, onClick = {
             progress = 0f
