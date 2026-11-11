@@ -196,7 +196,7 @@
     <string name="nutr_note" translatable="false">%1$s %2$d g (P %3$.1f g, F %4$.1f g)</string>
     <string name="t_work">Workout</string>
     <string name="workout_today">Today\'s workout</string>
-    <string name="cat_flat">Flat stomach</string>
+    <string name="cat_flat">Abs</string>
     <string name="cat_build">Body building</string>
     <string name="start_workout">Start workout</string>
     <string name="next_drill">Next</string>
