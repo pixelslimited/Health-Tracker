@@ -5,6 +5,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -94,7 +95,7 @@ fun Stat(label: String, value: String) {
 @Composable
 fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
     val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val pressed by androidx.compose.foundation.interaction.collectIsPressedAsState(src)
+    val pressed by src.collectIsPressedAsState()
     val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.97f else 1f, androidx.compose.animation.core.tween(90), label = "press")
     androidx.compose.material3.Button(
         onClick = onClick,
@@ -110,7 +111,7 @@ fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean 
 @Composable
 fun OutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
     val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val pressed by androidx.compose.foundation.interaction.collectIsPressedAsState(src)
+    val pressed by src.collectIsPressedAsState()
     val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.97f else 1f, androidx.compose.animation.core.tween(90), label = "press")
     androidx.compose.material3.OutlinedButton(
         onClick = onClick,

@@ -28,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -91,7 +92,16 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
     val ctx = LocalContext.current
     val today = LocalDate.now()
     val steps = me.steps[today.toString()] ?: 0
-    val shown by androidx.compose.animation.core.animateIntAsState(steps, androidx.compose.animation.core.tween(900), label = "steps")
+    // Each new step presses the number down and lets it spring back.
+    val press = remember { androidx.compose.animation.core.Animatable(1f) }
+    var seen by remember { mutableStateOf(steps) }
+    LaunchedEffect(steps) {
+        if (steps != seen) {
+            seen = steps
+            press.animateTo(0.86f, androidx.compose.animation.core.tween(50))
+            press.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.3f, stiffness = 600f))
+        }
+    }
     val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
     val big = (wide * 0.26f).coerceIn(56f, 96f)
     val week = weekSteps(me, today)
@@ -117,7 +127,12 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
             )
         }
         Text(
-            String.format(Locale.getDefault(), "%,d", shown),
+            String.format(Locale.getDefault(), "%,d", steps),
+            modifier = Modifier.graphicsLayer {
+                scaleX = press.value
+                scaleY = press.value
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 1f)
+            },
             fontSize = big.sp, lineHeight = big.sp, letterSpacing = (-4).sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
         )
         Text(ctx.getString(R.string.goal_n, me.dailyGoal), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
