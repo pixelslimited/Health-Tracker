@@ -127,45 +127,6 @@ fun SegBar(fraction: Float, segments: Int = 10) {
 }
 
 @Composable
-fun TimelineRow(time: String, title: String, detail: String, first: Boolean, last: Boolean, now: Boolean) {
-    val line = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-    val dot = if (now) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-    Row(Modifier.fillMaxWidth().height(64.dp)) {
-        Text(time, Modifier.width(64.dp), style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Canvas(Modifier.width(24.dp).fillMaxHeight()) {
-            val cx = size.width / 2
-            val cy = 11.dp.toPx()
-            drawLine(line, Offset(cx, if (first) cy else 0f), Offset(cx, if (last) cy else size.height), strokeWidth = 2.dp.toPx())
-            drawCircle(dot, radius = if (now) 9.dp.toPx() else 6.dp.toPx(), center = Offset(cx, cy))
-        }
-        Spacer(Modifier.width(10.dp))
-        Column {
-            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-            Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-fun BottomBar(tabs: List<Pair<String, ImageVector>>, selected: Int, onSelect: (Int) -> Unit) {
-    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)))
-        Row(Modifier.fillMaxWidth()) {
-            tabs.forEachIndexed { i, (label, icon) ->
-                val on = i == selected
-                val tint = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
-                Column(Modifier.weight(1f).height(76.dp).clickable { onSelect(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.fillMaxWidth().height(3.dp).background(if (on) MaterialTheme.colorScheme.onSurface else Color.Transparent))
-                    Spacer(Modifier.height(12.dp))
-                    Icon(icon, contentDescription = null, tint = tint)
-                    Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = tint, maxLines = 1)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun LevelText(level: Level) {
     val text = when (level) {
         Level.OK -> s(R.string.status_ok)
@@ -269,37 +230,5 @@ fun LineChart(values: List<Float>) {
         drawCircle(ink, 4.dp.toPx(), at(0))
         drawCircle(bg, 9.dp.toPx(), at(values.size - 1))
         drawCircle(accent, 7.dp.toPx(), at(values.size - 1))
-    }
-}
-
-/** Week bars: today in the accent, days that met the goal in solid ink. */
-@Composable
-fun Bars(values: List<Int>, goal: Int, labels: List<String>, today: Int) {
-    val top = maxOf(values.maxOrNull() ?: 0, goal, 1).toFloat()
-    val ink = MaterialTheme.colorScheme.onSurface
-    Column {
-        Row(Modifier.fillMaxWidth().height(104.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
-            values.forEachIndexed { i, v ->
-                Box(
-                    Modifier.weight(1f).fillMaxHeight((v / top).coerceIn(0.02f, 1f)).background(
-                        when {
-                            i == today -> MaterialTheme.colorScheme.primary
-                            v >= goal -> ink
-                            else -> ink.copy(alpha = 0.3f)
-                        }
-                    )
-                )
-            }
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(ink))
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            labels.forEachIndexed { i, l ->
-                Text(
-                    l, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
-                    fontWeight = if (i == today) FontWeight.Bold else FontWeight.Normal,
-                    color = if (i == today) ink else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
     }
 }

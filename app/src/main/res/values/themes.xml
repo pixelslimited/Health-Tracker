@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ink">#14181B</color>
-    <color name="paper">#F6F4EF</color>
-    <color name="bg">#F6F4EF</color>
+    <color name="ink">#101417</color>
+    <color name="paper">#F4F1EA</color>
+    <color name="bg">#F4F1EA</color>
     <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@color/bg</item>
         <item name="android:navigationBarColor">@color/bg</item>

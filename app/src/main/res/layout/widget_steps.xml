@@ -11,7 +11,7 @@
         android:id="@+id/steps"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#F6F4EF"
+        android:textColor="#F4F1EA"
         android:textSize="26sp"
         android:textStyle="bold" />
     <TextView

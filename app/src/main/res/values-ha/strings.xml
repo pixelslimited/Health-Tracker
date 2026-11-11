@@ -5,7 +5,6 @@
     <string name="ch_remind">Tunatarwa</string>
     <string name="tab_today">Yau</string>
     <string name="tab_vitals">Lafiya</string>
-    <string name="tab_log">Rubuta</string>
     <string name="tab_reports">Rahoto</string>
     <string name="settings">Saituna</string>
     <string name="steps">Taki</string>
@@ -15,7 +14,6 @@
     <string name="steps_permission">Ba da izini don manhajar ta kirga takinka.</string>
     <string name="enable">Kunna</string>
     <string name="this_week">Wannan mako</string>
-    <string name="week_total">Jimillar mako</string>
     <string name="streak">Kwanaki a jere</string>
     <string name="f_days">Kwana %d</string>
     <string name="today">Yau</string>
@@ -154,12 +152,22 @@
     <string name="update_now">Sauke kuma shigar</string>
     <string name="update_failed">An kasa sauke sabuntawa.</string>
     <string name="made_by">Kayan Pixels Limited</string>
-    <string name="your_day">Ranarka</string>
-    <string name="now">Yanzu</string>
-    <string name="to_go">Saura taki %d</string>
-    <string name="goal_reached">An cika buri</string>
     <string name="appearance">Kamanni</string>
     <string name="theme_system">Saitin waya</string>
     <string name="theme_light">Haske</string>
     <string name="theme_dark">Duhu</string>
+    <string name="goal_n">Buri %d</string>
+    <string name="dur_hm">%1$d awa %2$02d min</string>
+    <string name="measured_at">An auna %s</string>
+    <string name="fasting_limit">Burin azumi kasa da %d</string>
+    <string name="manual">da hannu</string>
+    <string name="bedtime">Lokacin kwanciya</string>
+    <string name="woke">Tashi</string>
+    <string name="avg_7d">Matsakaicin kwana 7</string>
+    <string name="short_of_goal">%1$s kasa da burinka na awa %2$d</string>
+    <string name="hourly_desc">Taki a kowace awa yau</string>
+    <string name="sleep_chart_desc">Lokacin kwanciya da tashi kowane dare</string>
+    <string name="bp_chart_desc">Hawan jini na sama da na kasa a baya-bayan nan</string>
+    <string name="glu_chart_desc">Sakamakon sukari na baya-bayan nan da kewayon burinka</string>
+    <string name="week_desc">Kwanakin mako da ka cika burin taki</string>
 </resources>

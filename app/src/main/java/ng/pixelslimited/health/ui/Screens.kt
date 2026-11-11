@@ -10,7 +10,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -88,10 +93,7 @@ import java.time.LocalDate
 import java.util.Locale
 import java.util.concurrent.Executors
 
-private fun now() = System.currentTimeMillis()
-
-private fun toGo(ctx: android.content.Context, steps: Int, goal: Int): String =
-    if (steps >= goal) ctx.getString(R.string.goal_reached) else ctx.getString(R.string.to_go, goal - steps)
+internal fun now() = System.currentTimeMillis()
 
 @Composable
 fun AppRoot() {
@@ -99,6 +101,7 @@ fun AppRoot() {
     val me = data.me
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var settings by rememberSaveable { mutableStateOf(false) }
+    var add by remember { mutableStateOf("") }
     var release by remember { mutableStateOf<Updater.Release?>(null) }
     var alert by remember { mutableStateOf<Entry?>(null) }
     val appCtx = LocalContext.current.applicationContext
@@ -116,15 +119,10 @@ fun AppRoot() {
         if (level(e) == Level.DANGER) alert = e
         StepService.start(appCtx)
     }
-    val tabs = listOf(
-        R.string.tab_today to Icons.Filled.Home,
-        R.string.tab_vitals to Icons.Filled.Favorite,
-        R.string.tab_log to Icons.Filled.Create,
-        R.string.tab_reports to Icons.Filled.DateRange,
-    )
+    val titles = listOf(R.string.tab_today, R.string.tab_vitals, R.string.t_sleep, R.string.tab_reports)
     Scaffold(
         bottomBar = {
-            if (!settings) BottomBar(tabs.map { s(it.first) to it.second }, tab) { tab = it }
+            if (!settings) BottomBar(titles.map { s(it) }, tab, s(R.string.add), { tab = it }, { add = "pick" })
         }
     ) { pad ->
         Column(
@@ -134,20 +132,24 @@ fun AppRoot() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(dateText() + "  /  " + me.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                    Text(s(if (settings) R.string.settings else tabs[tab].first), style = MaterialTheme.typography.headlineMedium)
+                    Text(s(if (settings) R.string.settings else titles[tab]), style = MaterialTheme.typography.headlineMedium)
                 }
-                IconButton(onClick = { settings = !settings }) {
+                Box(
+                    Modifier.size(48.dp).border(1.5.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(6.dp)).clickable { settings = !settings },
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(if (settings) Icons.Filled.Close else Icons.Filled.Settings, contentDescription = s(R.string.settings))
                 }
             }
             if (settings) Settings(data, me) else when (tab) {
-                0 -> Today(me, release, save)
-                1 -> Vitals(me, save)
-                2 -> Log(me, save)
-                else -> Reports(me)
+                0 -> Today(me, release, { tab = it }, save)
+                1 -> Vitals(me) { add = it }
+                2 -> SleepScreen(me, save) { add = it }
+                else -> Reports(me) { add = it }
             }
         }
     }
+    AddFlow(me, add, { add = it }, save)
     alert?.let { EmergencyDialog(me, it) { alert = null } }
 }
 
@@ -167,176 +169,6 @@ fun UpdateCard(release: Updater.Release) {
                 if (apk == null) toast(ctx, ctx.getString(R.string.update_failed)) else Updater.install(ctx, apk)
             }
         }) { Text(s(R.string.update_now)) }
-    }
-}
-
-@Composable
-fun Today(me: Profile, release: Updater.Release?, save: (Entry) -> Unit) {
-    val ctx = LocalContext.current
-    val today = LocalDate.now()
-    val steps = me.steps[today.toString()] ?: 0
-    val week = weekSteps(me, today)
-    var granted by remember { mutableStateOf(StepService.canRun(ctx)) }
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted = StepService.canRun(ctx) }
-    LaunchedEffect(granted) { if (granted) StepService.start(ctx) }
-
-    if (release != null) UpdateCard(release)
-    if (!StepService.hasSensor(ctx)) {
-        Section(s(R.string.steps)) { Text(s(R.string.no_sensor)) }
-    } else if (!granted) {
-        Section(s(R.string.steps)) {
-            Text(s(R.string.steps_permission))
-            Button(onClick = { ask.launch(StepService.perms()) }) { Text(s(R.string.enable)) }
-        }
-    }
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(s(R.string.steps), style = MaterialTheme.typography.titleMedium)
-        Text(
-            String.format(Locale.getDefault(), "%,d", steps),
-            fontSize = 96.sp, lineHeight = 96.sp, letterSpacing = (-4).sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
-        )
-        SegBar(steps.toFloat() / me.dailyGoal)
-        Text(
-            ctx.getString(R.string.of_goal, me.dailyGoal) + "  /  " + toGo(ctx, steps, me.dailyGoal),
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-    Section(s(R.string.this_week)) {
-        Bars(week, me.dailyGoal, DayOfWeek.values().map { it.getDisplayName(java.time.format.TextStyle.NARROW, Locale.getDefault()) }, today.dayOfWeek.value - 1)
-        Stat(s(R.string.week_total), ctx.getString(R.string.of_total, week.sum(), me.weeklyGoal))
-        SegBar(week.sum().toFloat() / me.weeklyGoal)
-        Stat(s(R.string.streak), ctx.getString(R.string.f_days, streak(me, today)))
-    }
-    val water = me.since(T.WATER, dayStart(today)).sumOf { it.a }.toInt()
-    Section(s(R.string.t_water)) {
-        Stat(s(R.string.today), ctx.getString(R.string.of_total, water, me.waterGoal))
-        SegBar(water.toFloat() / me.waterGoal)
-        Button(onClick = { save(Entry(T.WATER, now(), 250.0)) }) { Text(s(R.string.add_glass)) }
-    }
-    SleepSection(me, save)
-    val todays = me.entries.filter { it.ts >= dayStart(today) }.sortedBy { it.ts }.takeLast(6)
-    Section(s(R.string.your_day)) {
-        todays.forEachIndexed { i, e -> TimelineRow(timeText(e.ts), typeName(ctx, e.type), e.value(ctx), first = i == 0, last = false, now = false) }
-        TimelineRow(timeText(now()), s(R.string.now), toGo(ctx, steps, me.dailyGoal), first = todays.isEmpty(), last = true, now = true)
-    }
-    Section(s(R.string.latest)) {
-        listOf(T.HR, T.BP, T.GLU).forEach { type ->
-            val e = me.last(type)
-            Stat(typeName(ctx, type), e?.value(ctx) ?: s(R.string.none))
-            if (e != null && level(e) != Level.OK) LevelText(level(e))
-        }
-    }
-}
-
-@Composable
-fun SleepSection(me: Profile, save: (Entry) -> Unit) {
-    val ctx = LocalContext.current
-    Section(s(R.string.t_sleep)) {
-        val last = me.last(T.SLEEP)
-        Stat(s(R.string.last_sleep), last?.value(ctx) ?: s(R.string.none))
-        Stat(s(R.string.goal), ctx.getString(R.string.f_hours, me.sleepGoal.toDouble()))
-        LineChart(me.series(T.SLEEP))
-        if (me.sleepStart == 0L) {
-            Button(onClick = { Store.edit { it.copy(sleepStart = now()) } }) { Text(s(R.string.sleep_start)) }
-        } else {
-            Text(ctx.getString(R.string.sleeping_since, whenText(me.sleepStart)))
-            Button(onClick = {
-                val hours = (now() - me.sleepStart) / 3600000.0
-                if (hours in 0.25..20.0) save(Entry(T.SLEEP, now(), hours))
-                Store.edit { it.copy(sleepStart = 0) }
-            }) { Text(s(R.string.sleep_stop)) }
-        }
-    }
-}
-
-@Composable
-fun Vitals(me: Profile, save: (Entry) -> Unit) {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var dlg by remember { mutableStateOf("") }
-    var glucoseWhen by remember { mutableIntStateOf(0) }
-    val runImport: () -> Unit = {
-        scope.launch {
-            try {
-                toast(ctx, ctx.getString(R.string.imported, Hc.sync(ctx)))
-            } catch (e: Exception) {
-                toast(ctx, ctx.getString(R.string.hc_failed))
-            }
-        }
-    }
-    val hcAsk = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { got ->
-        if (got.isNotEmpty()) runImport()
-    }
-
-    Section(s(R.string.t_hr)) {
-        val e = me.last(T.HR)
-        Stat(s(R.string.latest), e?.value(ctx) ?: s(R.string.none))
-        if (e != null) LevelText(level(e))
-        LineChart(me.series(T.HR))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { dlg = "hr" }) { Text(s(R.string.measure)) }
-            OutlinedButton(onClick = { dlg = "hrm" }) { Text(s(R.string.add)) }
-        }
-    }
-    Section(s(R.string.t_bp)) {
-        val e = me.last(T.BP)
-        Stat(s(R.string.latest), e?.value(ctx) ?: s(R.string.none))
-        if (e != null) LevelText(level(e))
-        LineChart(me.series(T.BP))
-        Text(s(R.string.bp_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Button(onClick = { dlg = "bp" }) { Text(s(R.string.add)) }
-    }
-    Section(s(R.string.t_glu)) {
-        val e = me.last(T.GLU)
-        Stat(s(R.string.latest), e?.value(ctx) ?: s(R.string.none))
-        if (e != null) LevelText(level(e))
-        if (e != null && e.b.toInt() == 0 && e.a > me.fastingMax) Text(ctx.getString(R.string.above_target, me.fastingMax), color = MaterialTheme.colorScheme.primary)
-        LineChart(me.series(T.GLU))
-        Stat(s(R.string.t_hba1c), me.last(T.HBA1C)?.value(ctx) ?: s(R.string.none))
-        Text(s(R.string.glu_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { dlg = "glu" }) { Text(s(R.string.add)) }
-            OutlinedButton(onClick = { dlg = "a1c" }) { Text(s(R.string.t_hba1c)) }
-        }
-    }
-    Section(s(R.string.wearable)) {
-        Text(s(R.string.hc_desc), style = MaterialTheme.typography.bodyMedium)
-        OutlinedButton(onClick = {
-            if (!Hc.available(ctx)) toast(ctx, ctx.getString(R.string.hc_missing)) else scope.launch {
-                try {
-                    if (Hc.granted(ctx)) runImport() else hcAsk.launch(Hc.perms)
-                } catch (e: Exception) {
-                    toast(ctx, ctx.getString(R.string.hc_failed))
-                }
-            }
-        }) { Text(s(R.string.hc_import)) }
-    }
-
-    when (dlg) {
-        "hr" -> MeasureHr(onDone = { save(Entry(T.HR, now(), it.toDouble())); dlg = "" }, onClose = { dlg = "" })
-        "hrm" -> RulerDialog(s(R.string.t_hr), listOf(RulerSpec(s(R.string.unit_bpm), 30..220, 1, 72)), onClose = { dlg = "" }) { v, _ ->
-            save(Entry(T.HR, now(), v[0].toDouble())); dlg = ""
-        }
-        "bp" -> RulerDialog(
-            s(R.string.t_bp),
-            listOf(RulerSpec(s(R.string.systolic), 60..260, 1, 120), RulerSpec(s(R.string.diastolic), 30..160, 1, 80)),
-            onClose = { dlg = "" },
-        ) { v, _ -> save(Entry(T.BP, now(), v[0].toDouble(), v[1].toDouble())); dlg = "" }
-        "glu" -> RulerDialog(
-            s(R.string.t_glu),
-            listOf(RulerSpec(s(R.string.unit_mgdl), 20..600, 1, 100) { "$it  (" + String.format(Locale.US, "%.1f", it / 18.0) + " mmol/L)" }),
-            extra = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(R.string.fasting, R.string.after_meal, R.string.random).forEachIndexed { i, label ->
-                        FilterChip(selected = glucoseWhen == i, onClick = { glucoseWhen = i }, label = { Text(s(label)) })
-                    }
-                }
-            },
-            onClose = { dlg = "" },
-        ) { v, _ -> save(Entry(T.GLU, now(), v[0].toDouble(), glucoseWhen.toDouble())); dlg = "" }
-        "a1c" -> RulerDialog(s(R.string.t_hba1c), listOf(RulerSpec("%", 40..150, 1, 60) { String.format(Locale.US, "%.1f", it / 10.0) }), onClose = { dlg = "" }) { v, _ ->
-            save(Entry(T.HBA1C, now(), v[0] / 10.0)); dlg = ""
-        }
     }
 }
 
@@ -439,59 +271,7 @@ fun EmergencyDialog(me: Profile, e: Entry, onClose: () -> Unit) {
 }
 
 @Composable
-fun Log(me: Profile, save: (Entry) -> Unit) {
-    val ctx = LocalContext.current
-    var dlg by remember { mutableStateOf("") }
-    Section(s(R.string.add)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { dlg = "meal" }, modifier = Modifier.weight(1f)) { Text(s(R.string.t_meal)) }
-            Button(onClick = { dlg = "water" }, modifier = Modifier.weight(1f)) { Text(s(R.string.t_water)) }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { dlg = "weight" }, modifier = Modifier.weight(1f)) { Text(s(R.string.t_weight)) }
-            Button(onClick = { dlg = "sleep" }, modifier = Modifier.weight(1f)) { Text(s(R.string.t_sleep)) }
-        }
-    }
-    Section(s(R.string.t_weight)) {
-        Stat(s(R.string.latest), me.last(T.WEIGHT)?.value(ctx) ?: s(R.string.none))
-        me.bmi()?.let { Stat(s(R.string.bmi), String.format(Locale.US, "%.1f", it)) }
-        LineChart(me.series(T.WEIGHT))
-    }
-    val carbs = me.since(T.MEAL, dayStart()).sumOf { it.a }.toInt()
-    Section(s(R.string.t_meal)) { Stat(s(R.string.carbs_today), ctx.getString(R.string.f_carbs, carbs)) }
-    Section(s(R.string.recent)) {
-        val recent = me.entries.sortedByDescending { it.ts }.take(40)
-        if (recent.isEmpty()) Text(s(R.string.none))
-        recent.forEach { e ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(typeName(ctx, e.type) + ": " + e.value(ctx), style = MaterialTheme.typography.bodyLarge)
-                    Text(whenText(e.ts), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                IconButton(onClick = { Store.edit { p -> p.copy(entries = p.entries - e) } }) { Icon(Icons.Filled.Delete, contentDescription = s(R.string.delete)) }
-            }
-        }
-    }
-    when (dlg) {
-        "meal" -> RulerDialog(s(R.string.t_meal), listOf(RulerSpec(s(R.string.carbs_g), 0..300, 5, 45)), note = true, onClose = { dlg = "" }) { v, note ->
-            save(Entry(T.MEAL, now(), v[0].toDouble(), note = note)); dlg = ""
-        }
-        "water" -> RulerDialog(s(R.string.t_water), listOf(RulerSpec("ml", 50..2000, 50, 250)), onClose = { dlg = "" }) { v, _ ->
-            save(Entry(T.WATER, now(), v[0].toDouble())); dlg = ""
-        }
-        "weight" -> RulerDialog(
-            s(R.string.t_weight),
-            listOf(RulerSpec("kg", 200..2500, 5, ((me.last(T.WEIGHT)?.a ?: 70.0) * 10).toInt() / 5 * 5) { String.format(Locale.US, "%.1f", it / 10.0) }),
-            onClose = { dlg = "" },
-        ) { v, _ -> save(Entry(T.WEIGHT, now(), v[0] / 10.0)); dlg = "" }
-        "sleep" -> RulerDialog(s(R.string.t_sleep), listOf(RulerSpec(s(R.string.hours), 1..32, 1, 14) { String.format(Locale.US, "%.1f", it / 2.0) }), onClose = { dlg = "" }) { v, _ ->
-            save(Entry(T.SLEEP, now(), v[0] / 2.0)); dlg = ""
-        }
-    }
-}
-
-@Composable
-fun Reports(me: Profile) {
+fun Reports(me: Profile, onAdd: (String) -> Unit) {
     val ctx = LocalContext.current
     var risk by remember { mutableStateOf(false) }
     val from = now() - 7 * 86400000L
@@ -510,6 +290,7 @@ fun Reports(me: Profile) {
         Stat(s(R.string.t_sleep), if (sleep.isEmpty()) s(R.string.none) else ctx.getString(R.string.f_hours, sleep.map { it.a }.average()))
         me.bmi()?.let { Stat(s(R.string.bmi), String.format(Locale.US, "%.1f", it)) }
     }
+    LogSections(me, onAdd)
     Section(s(R.string.export)) {
         Text(s(R.string.export_desc), style = MaterialTheme.typography.bodyMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

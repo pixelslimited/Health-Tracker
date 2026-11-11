@@ -49,15 +49,18 @@ data class Profile(
     val sleepStart: Long = 0,
     val entries: List<Entry> = emptyList(),
     val steps: Map<String, Int> = emptyMap(),
+    val hourly: Map<String, List<Int>> = emptyMap(),
     val reminders: List<Reminder> = emptyList(),
 ) {
     fun json(): JSONObject {
         val st = JSONObject()
         steps.forEach { (k, v) -> st.put(k, v) }
+        val hr = JSONObject()
+        hourly.forEach { (k, v) -> hr.put(k, JSONArray(v)) }
         return JSONObject().put("id", id).put("name", name).put("birthYear", birthYear).put("heightCm", heightCm)
             .put("male", male).put("dailyGoal", dailyGoal).put("weeklyGoal", weeklyGoal).put("waterGoal", waterGoal)
             .put("fastingMax", fastingMax).put("hba1cTarget", hba1cTarget).put("contactName", contactName)
-            .put("contactPhone", contactPhone).put("sleepGoal", sleepGoal).put("sleepStart", sleepStart).put("steps", st)
+            .put("contactPhone", contactPhone).put("sleepGoal", sleepGoal).put("sleepStart", sleepStart).put("steps", st).put("hourly", hr)
             .put("entries", JSONArray(entries.map { it.json() }))
             .put("reminders", JSONArray(reminders.map { it.json() }))
     }
@@ -68,6 +71,12 @@ data class Profile(
             val st = o.optJSONObject("steps") ?: JSONObject()
             val steps = HashMap<String, Int>()
             st.keys().forEach { steps[it] = st.getInt(it) }
+            val ho = o.optJSONObject("hourly") ?: JSONObject()
+            val hourly = HashMap<String, List<Int>>()
+            ho.keys().forEach { k ->
+                val a = ho.getJSONArray(k)
+                hourly[k] = (0 until a.length()).map { a.getInt(it) }
+            }
             val ea = o.optJSONArray("entries") ?: JSONArray()
             val ra = o.optJSONArray("reminders") ?: JSONArray()
             return Profile(
@@ -87,6 +96,7 @@ data class Profile(
                 sleepStart = o.optLong("sleepStart", 0),
                 entries = (0 until ea.length()).map { Entry.of(ea.getJSONObject(it)) },
                 steps = steps,
+                hourly = hourly,
                 reminders = (0 until ra.length()).map { Reminder.of(ra.getJSONObject(it)) },
             )
         }

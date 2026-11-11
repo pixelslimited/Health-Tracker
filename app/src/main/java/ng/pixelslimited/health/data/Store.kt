@@ -59,7 +59,12 @@ object Store {
     /** Edit the active profile. */
     fun edit(f: (Profile) -> Profile) = update { d -> d.copy(profiles = d.profiles.map { if (it.id == d.me.id) f(it) else it }) }
 
-    fun addSteps(day: String, n: Int) = edit { it.copy(steps = it.steps + (day to ((it.steps[day] ?: 0) + n))) }
+    fun addSteps(day: String, hour: Int, n: Int) = edit { p ->
+        val hours = (p.hourly[day] ?: List(24) { 0 }).toMutableList()
+        hours[hour] += n
+        val kept = (p.hourly + (day to hours)).toSortedMap().entries.toList().takeLast(14).associate { it.key to it.value }
+        p.copy(steps = p.steps + (day to ((p.steps[day] ?: 0) + n)), hourly = kept)
+    }
 
     fun flush() {
         saveJob?.cancel()

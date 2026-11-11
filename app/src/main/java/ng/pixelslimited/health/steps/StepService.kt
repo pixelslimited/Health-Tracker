@@ -70,7 +70,7 @@ class StepService : Service(), SensorEventListener {
         if (last < 0) return
         // The counter restarts from zero after a reboot.
         val delta = if (total >= last) total - last else total
-        if (delta in 1..50000) Store.addSteps(LocalDate.now().toString(), delta.toInt())
+        if (delta in 1..50000) Store.addSteps(LocalDate.now().toString(), java.time.LocalTime.now().hour, delta.toInt())
         val now = System.currentTimeMillis()
         if (now - lastShown > 30000) {
             lastShown = now

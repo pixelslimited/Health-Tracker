@@ -5,7 +5,6 @@
     <string name="ch_remind">Reminders</string>
     <string name="tab_today">Today</string>
     <string name="tab_vitals">Vitals</string>
-    <string name="tab_log">Log</string>
     <string name="tab_reports">Reports</string>
     <string name="settings">Settings</string>
     <string name="steps">Steps</string>
@@ -15,7 +14,6 @@
     <string name="steps_permission">Allow activity access so the app can count your steps in the background.</string>
     <string name="enable">Enable</string>
     <string name="this_week">This week</string>
-    <string name="week_total">Weekly total</string>
     <string name="streak">Goal streak</string>
     <string name="f_days">%d days</string>
     <string name="today">Today</string>
@@ -163,12 +161,22 @@
     <string name="unit_bpm" translatable="false">bpm</string>
     <string name="unit_mgdl" translatable="false">mg/dL</string>
     <string name="of_total" translatable="false">%1$d / %2$d</string>
-    <string name="your_day">Your day</string>
-    <string name="now">Now</string>
-    <string name="to_go">%d steps to go</string>
-    <string name="goal_reached">Goal reached</string>
     <string name="appearance">Appearance</string>
     <string name="theme_system">Phone setting</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="goal_n">Goal %d</string>
+    <string name="dur_hm">%1$d h %2$02d min</string>
+    <string name="measured_at">Measured %s</string>
+    <string name="fasting_limit">Fasting target under %d</string>
+    <string name="manual">manual</string>
+    <string name="bedtime">Bedtime</string>
+    <string name="woke">Woke</string>
+    <string name="avg_7d">7-day average</string>
+    <string name="short_of_goal">%1$s short of your %2$d h goal</string>
+    <string name="hourly_desc">Steps by hour today</string>
+    <string name="sleep_chart_desc">Bedtime and wake time each night</string>
+    <string name="bp_chart_desc">Upper and lower blood pressure for recent readings</string>
+    <string name="glu_chart_desc">Recent glucose readings against your target range</string>
+    <string name="week_desc">Days this week you reached your step goal</string>
 </resources>

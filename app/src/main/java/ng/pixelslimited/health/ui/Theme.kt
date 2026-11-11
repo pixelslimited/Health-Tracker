@@ -19,27 +19,27 @@ import androidx.compose.ui.text.font.FontWeight
 import ng.pixelslimited.health.R
 import androidx.compose.ui.unit.sp
 
-// Two base tones and one accent.
-private val Ink = Color(0xFF14181B)
-private val Paper = Color(0xFFF6F4EF)
+// Two base tones, one accent, one hairline colour per theme.
+private val Ink = Color(0xFF101417)
+private val Paper = Color(0xFFF4F1EA)
 private val Accent = Color(0xFFE5484D)
 
 private val Light = lightColorScheme(
     primary = Accent, onPrimary = Paper, secondary = Ink, onSecondary = Paper,
     background = Paper, onBackground = Ink, surface = Paper, onSurface = Ink,
-    surfaceVariant = Color(0xFFECE8DF), onSurfaceVariant = Ink.copy(alpha = 0.72f),
+    surfaceVariant = Color(0xFFE7E3D9), onSurfaceVariant = Color(0xFF555D62),
     secondaryContainer = Accent.copy(alpha = 0.16f), onSecondaryContainer = Ink,
-    surfaceContainer = Color(0xFFECE8DF), surfaceContainerHigh = Color(0xFFECE8DF),
-    outline = Ink.copy(alpha = 0.35f), error = Accent, onError = Paper,
+    surfaceContainer = Color(0xFFE7E3D9), surfaceContainerHigh = Color(0xFFE7E3D9),
+    outline = Ink.copy(alpha = 0.35f), outlineVariant = Color(0xFFCFCBC0), error = Accent, onError = Paper,
 )
 
 private val Dark = darkColorScheme(
     primary = Accent, onPrimary = Paper, secondary = Paper, onSecondary = Ink,
     background = Ink, onBackground = Paper, surface = Ink, onSurface = Paper,
-    surfaceVariant = Color(0xFF20262B), onSurfaceVariant = Paper.copy(alpha = 0.72f),
+    surfaceVariant = Color(0xFF1B2226), onSurfaceVariant = Color(0xFFA9B0B5),
     secondaryContainer = Accent.copy(alpha = 0.24f), onSecondaryContainer = Paper,
-    surfaceContainer = Color(0xFF20262B), surfaceContainerHigh = Color(0xFF20262B),
-    outline = Paper.copy(alpha = 0.35f), error = Accent, onError = Paper,
+    surfaceContainer = Color(0xFF1B2226), surfaceContainerHigh = Color(0xFF1B2226),
+    outline = Paper.copy(alpha = 0.35f), outlineVariant = Color(0xFF2A3237), error = Accent, onError = Paper,
 )
 
 // Inter for text, Inter Display for headings and numerals (bundled, SIL Open Font License).

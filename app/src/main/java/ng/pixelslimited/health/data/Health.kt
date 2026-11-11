@@ -43,6 +43,13 @@ fun Profile.series(type: String, n: Int = 14): List<Float> =
 
 fun Profile.since(type: String, fromMs: Long): List<Entry> = entries.filter { it.type == type && it.ts >= fromMs }
 
+fun Profile.hoursOf(day: LocalDate = LocalDate.now()): List<Int> = hourly[day.toString()] ?: List(24) { 0 }
+
+fun durationText(ctx: Context, hours: Double): String {
+    val m = Math.round(hours * 60).toInt()
+    return ctx.getString(R.string.dur_hm, m / 60, m % 60)
+}
+
 fun Profile.bmi(): Double? = last(T.WEIGHT)?.let { it.a / (heightCm / 100.0).pow(2) }
 
 fun dayStart(d: LocalDate = LocalDate.now()): Long = d.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
