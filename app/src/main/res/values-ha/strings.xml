@@ -227,4 +227,12 @@
     <string name="ex_superman">Superman</string>
     <string name="ex_superman_how">Kwanta a ciki. Daga hannaye, ƙirji da ƙafafu tare, ka riƙe na ɗan lokaci, sannan ka sauko.</string>
     <string name="ex_superman_res">Yana ƙarfafa baya yana inganta tsayuwa.</string>
+    <string name="program_day">Rana ta %d</string>
+    <string name="level_easy">Sauƙi</string>
+    <string name="level_mid">Matsakaici</string>
+    <string name="level_hard">Mai wahala</string>
+    <string name="restart_program">Sake farawa daga rana ta 1</string>
+    <string name="restart_confirm">Sake fara shirin daga rana ta 1? Ƙarin wahala na yau da kullum zai sake farawa.</string>
+    <string name="restart_yes">Sake farawa</string>
+    <string name="recovery_day">Ranar hutu: saiti mai sauƙi yau.</string>
 </resources>

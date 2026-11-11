@@ -227,4 +227,12 @@
     <string name="ex_superman">سوبرمان</string>
     <string name="ex_superman_how">استلقِ على بطنك. ارفع الذراعين والصدر والساقين معاً، اثبت قليلاً ثم انزل.</string>
     <string name="ex_superman_res">يقوي الظهر ويحسن وضعية الجسم.</string>
+    <string name="program_day">اليوم %d</string>
+    <string name="level_easy">سهل</string>
+    <string name="level_mid">متوسط</string>
+    <string name="level_hard">صعب</string>
+    <string name="restart_program">ابدأ من اليوم الأول</string>
+    <string name="restart_confirm">إعادة البرنامج من اليوم الأول؟ ستبدأ الزيادة اليومية في الصعوبة من جديد.</string>
+    <string name="restart_yes">إعادة</string>
+    <string name="recovery_day">يوم تعافٍ: مجموعة أخف اليوم.</string>
 </resources>

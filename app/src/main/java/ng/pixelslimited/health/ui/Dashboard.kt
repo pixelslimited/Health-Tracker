@@ -160,8 +160,8 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
         SegBar(week.sum().toFloat() / me.weeklyGoal)
         Stat(s(R.string.streak), ctx.getString(R.string.f_days, streak(me, today)))
     }
-    WorkoutBlock(me.since(T.WORK, dayStart(today)).sumOf { it.a }.toInt(), { training = true }, cat) { cat = it }
-    if (training) WorkoutDialog(cat, { training = false }) { save(it); training = false }
+    WorkoutBlock(me, me.since(T.WORK, dayStart(today)).sumOf { it.a }.toInt(), { training = true }, cat) { cat = it }
+    if (training) WorkoutDialog(cat, Workouts.plan(cat, me.fitLevel, Workouts.programDay(me.fitStart)), { training = false }) { save(it); training = false }
     val water = me.since(T.WATER, dayStart(today)).sumOf { it.a }.toInt()
     Section(s(R.string.t_water)) {
         Stat(s(R.string.today), ctx.getString(R.string.of_total, water, me.waterGoal))

@@ -29,7 +29,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -87,26 +91,54 @@ object Workouts {
     private val flat = listOf(crunch, legRaise, plank, climber, flutter)
     private val build = listOf(pushUp, squat, bridge, dip, superman)
 
-    /** Four drills a day, starting at a different drill each weekday so the week varies. */
-    fun today(cat: Int, day: LocalDate = LocalDate.now()): List<Drill> {
+    /** One drill with its sets and count for a given day and difficulty. */
+    class Planned(val drill: Drill, val sets: Int, val count: Int)
+
+    /** Programme day number: 1 on the day it starts, then counting up. */
+    fun programDay(start: String, today: LocalDate = LocalDate.now()): Int =
+        if (start.isBlank()) 1 else (java.time.temporal.ChronoUnit.DAYS.between(LocalDate.parse(start), today) + 1).toInt().coerceAtLeast(1)
+
+    fun isRecovery(day: Int) = day % 7 == 0
+
+    /**
+     * Harder with each programme day (about 4% more a day, up to 80% more), by difficulty level
+     * (more drills, more sets, higher counts), with a lighter recovery day every seventh day.
+     */
+    fun plan(cat: Int, level: Int, day: Int): List<Planned> {
         val list = if (cat == 0) flat else build
-        val start = day.dayOfWeek.value % list.size
-        return List(4) { list[(start + it) % list.size] }
+        val start = (day - 1) % list.size
+        val base = listOf(0.7f, 1f, 1.3f)[level.coerceIn(0, 2)]
+        val ramp = (1f + 0.04f * (day - 1)).coerceAtMost(1.8f)
+        val factor = base * ramp * (if (isRecovery(day)) 0.6f else 1f)
+        val drills = 3 + level.coerceIn(0, 2)
+        val sets = 2 + level.coerceIn(0, 2)
+        return List(drills) { n ->
+            val d = list[(start + n) % list.size]
+            val raw = d.count * factor
+            val count = if (d.seconds) (Math.round(raw / 5f) * 5).coerceAtLeast(10) else Math.round(raw).coerceAtLeast(5)
+            Planned(d, sets, count)
+        }
     }
 }
 
 private fun lerp(a: Offset, b: Offset, t: Float) = Offset(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
 
-/** The drill as a looping two-pose animation: the figure moves from start to end and back. */
+private val Skin = Color(0xFF5A3825)
+private val SkinHi = Color(0xFF7D4F35)
+private val SkinFar = Color(0xFF3F271A)
+private val Hair = Color(0xFF14100E)
+private val Shorts = Color(0xFF2D3644)
+private val Shoe = Color(0xFFE8E4DA)
+
+/** The drill as a looping two-pose animation of a figure on a mat: it moves from start to end and back. */
 @Composable
 fun DrillAnimation(d: Drill) {
-    val ink = MaterialTheme.colorScheme.onSurface
-    val accent = MaterialTheme.colorScheme.primary
-    val line = MaterialTheme.colorScheme.outlineVariant
+    val shirt = MaterialTheme.colorScheme.primary
+    val mat = MaterialTheme.colorScheme.outlineVariant
     val t by rememberInfiniteTransition(label = "drill").animateFloat(
         0f, 1f, infiniteRepeatable(tween(if (d.seconds) 600 else 1200, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "t",
     )
-    Canvas(Modifier.fillMaxWidth().height(220.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(240.dp)) {
         val side = minOf(size.width, size.height)
         val left = (size.width - side) / 2
         fun at(p: Offset) = Offset(left + p.x * side, p.y * side)
@@ -114,43 +146,90 @@ fun DrillAnimation(d: Drill) {
         val g = d.to
         val h = at(lerp(f.h, g.h, t)); val n = at(lerp(f.n, g.n, t)); val p = at(lerp(f.p, g.p, t))
         val e = at(lerp(f.e, g.e, t)); val w = at(lerp(f.w, g.w, t)); val k = at(lerp(f.k, g.k, t)); val a = at(lerp(f.a, g.a, t))
-        val sw = 7.dp.toPx()
-        drawLine(line, Offset(left, side * 0.9f), Offset(left + side, side * 0.9f), strokeWidth = 2.dp.toPx())
-        d.bench?.let { drawLine(line, at(it.first), at(it.second), strokeWidth = 5.dp.toPx(), cap = StrokeCap.Round) }
-        for ((s, t2) in listOf(n to p, n to e, e to w, p to k, k to a)) drawLine(ink, s, t2, strokeWidth = sw, cap = StrokeCap.Round)
-        drawCircle(accent, 0.05f * side, h)
+        val u = side
+        fun seg(s: Offset, t2: Offset, width: Float, c: Color) = drawLine(c, s, t2, strokeWidth = width * u, cap = StrokeCap.Round)
+        fun limb(s: Offset, t2: Offset, width: Float) {
+            seg(s, t2, width, Skin)
+            seg(s + Offset(-0.012f * u, -0.012f * u), t2 + Offset(-0.012f * u, -0.012f * u), width * 0.3f, SkinHi)
+        }
+        // Floor mat.
+        drawRoundRect(mat, Offset(left + 0.02f * u, 0.89f * u), androidx.compose.ui.geometry.Size(0.96f * u, 0.045f * u), androidx.compose.ui.geometry.CornerRadius(0.02f * u))
+        d.bench?.let { seg(at(it.first), at(it.second), 0.04f, Shorts) }
+        // Far side arm and leg, darker and slightly behind.
+        val far = Offset(0.022f * u, -0.014f * u)
+        seg(n + far, e + far, 0.045f, SkinFar); seg(e + far, w + far, 0.038f, SkinFar)
+        seg(p + far, k + far, 0.07f, SkinFar); seg(k + far, a + far, 0.05f, SkinFar)
+        drawCircle(Shoe, 0.04f * u, a + far + Offset(0.02f * u, 0f))
+        // Torso in the shirt colour, then near leg, shorts, shoe, near arm and head.
+        seg(n, p, 0.105f, shirt)
+        seg(n + Offset(-0.014f * u, -0.01f * u), p + Offset(-0.014f * u, -0.01f * u), 0.03f, shirt.copy(alpha = 0.55f).compositeOver(Color.White))
+        limb(p, k, 0.075f); limb(k, a, 0.055f)
+        seg(p, lerp(p, k, 0.62f), 0.088f, Shorts)
+        drawCircle(Shoe, 0.045f * u, a + Offset(0.022f * u, 0f))
+        limb(n, e, 0.05f); limb(e, w, 0.042f)
+        drawCircle(Skin, 0.05f * u, w)
+        val up = (h - n).let { v -> val len = kotlin.math.sqrt(v.x * v.x + v.y * v.y).coerceAtLeast(1f); Offset(v.x / len, v.y / len) }
+        drawCircle(Skin, 0.054f * u, h)
+        drawCircle(Hair, 0.05f * u, h + up * (0.018f * u))
     }
 }
 
 @Composable
-fun WorkoutBlock(done: Int, onStart: (Int) -> Unit, cat: Int, setCat: (Int) -> Unit) {
+fun WorkoutBlock(me: ng.pixelslimited.health.data.Profile, done: Int, onStart: (Int) -> Unit, cat: Int, setCat: (Int) -> Unit) {
     val ctx = LocalContext.current
-    val list = Workouts.today(cat)
+    var confirm by remember { mutableStateOf(false) }
+    // The programme starts the first time this is shown.
+    LaunchedEffect(me.fitStart.isBlank()) {
+        if (me.fitStart.isBlank()) ng.pixelslimited.health.data.Store.edit { it.copy(fitStart = LocalDate.now().toString()) }
+    }
+    val day = Workouts.programDay(me.fitStart)
+    val list = Workouts.plan(cat, me.fitLevel, day)
     Block {
         MetricHeader(s(R.string.workout_today), ctx.getString(R.string.of_total, done.coerceAtMost(list.size), list.size))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(ctx.getString(R.string.program_day, day), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = { confirm = true }) { Text(s(R.string.restart_program)) }
+        }
+        if (Workouts.isRecovery(day)) Text(s(R.string.recovery_day), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = cat == 0, onClick = { setCat(0) }, label = { Text(s(R.string.cat_flat)) })
             FilterChip(selected = cat == 1, onClick = { setCat(1) }, label = { Text(s(R.string.cat_build)) })
         }
-        list.forEach { d ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(R.string.level_easy, R.string.level_mid, R.string.level_hard).forEachIndexed { i, label ->
+                FilterChip(selected = me.fitLevel == i, onClick = { ng.pixelslimited.health.data.Store.edit { it.copy(fitLevel = i) } }, label = { Text(s(label)) })
+            }
+        }
+        list.forEach { pl ->
             Row(Modifier.fillMaxWidth()) {
-                Text(s(d.name), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(s(pl.drill.name), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    ctx.getString(if (d.seconds) R.string.sets_secs else R.string.sets_reps, d.sets, d.count),
+                    ctx.getString(if (pl.drill.seconds) R.string.sets_secs else R.string.sets_reps, pl.sets, pl.count),
                     style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
         Button(onClick = { onStart(cat) }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.start_workout)) }
     }
+    if (confirm) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { confirm = false },
+        text = { Text(s(R.string.restart_confirm)) },
+        confirmButton = {
+            TextButton(onClick = {
+                ng.pixelslimited.health.data.Store.edit { it.copy(fitStart = LocalDate.now().toString()) }
+                confirm = false
+            }) { Text(s(R.string.restart_yes)) }
+        },
+        dismissButton = { TextButton(onClick = { confirm = false }) { Text(s(R.string.cancel)) } },
+    )
 }
 
 @Composable
-fun WorkoutDialog(cat: Int, onClose: () -> Unit, onFinish: (Entry) -> Unit) {
+fun WorkoutDialog(cat: Int, list: List<Workouts.Planned>, onClose: () -> Unit, onFinish: (Entry) -> Unit) {
     val ctx = LocalContext.current
-    val list = remember(cat) { Workouts.today(cat) }
     var i by remember { mutableIntStateOf(0) }
-    val d = list[i]
+    val pl = list[i]
+    val d = pl.drill
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -163,7 +242,7 @@ fun WorkoutDialog(cat: Int, onClose: () -> Unit, onFinish: (Entry) -> Unit) {
                 Block { DrillAnimation(d) }
                 Text(s(d.name), style = MaterialTheme.typography.headlineMedium)
                 Text(
-                    ctx.getString(if (d.seconds) R.string.sets_secs else R.string.sets_reps, d.sets, d.count),
+                    ctx.getString(if (d.seconds) R.string.sets_secs else R.string.sets_reps, pl.sets, pl.count),
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
                 )
                 Text(s(R.string.how_to), style = MaterialTheme.typography.titleMedium)

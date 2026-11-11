@@ -52,6 +52,9 @@ data class Profile(
     val entries: List<Entry> = emptyList(),
     val steps: Map<String, Int> = emptyMap(),
     val hourly: Map<String, List<Int>> = emptyMap(),
+    /** Workout difficulty (0 easy, 1 medium, 2 hard) and the date programme day 1 began. */
+    val fitLevel: Int = 1,
+    val fitStart: String = "",
     val reminders: List<Reminder> = emptyList(),
 ) {
     fun json(): JSONObject {
@@ -62,7 +65,7 @@ data class Profile(
         return JSONObject().put("id", id).put("name", name).put("birthYear", birthYear).put("heightCm", heightCm)
             .put("male", male).put("dailyGoal", dailyGoal).put("weeklyGoal", weeklyGoal).put("waterGoal", waterGoal)
             .put("fastingMax", fastingMax).put("hba1cTarget", hba1cTarget).put("contactName", contactName)
-            .put("contactPhone", contactPhone).put("sleepGoal", sleepGoal).put("sleepStart", sleepStart).put("steps", st).put("hourly", hr)
+            .put("contactPhone", contactPhone).put("sleepGoal", sleepGoal).put("sleepStart", sleepStart).put("steps", st).put("hourly", hr).put("fitLevel", fitLevel).put("fitStart", fitStart)
             .put("entries", JSONArray(entries.map { it.json() }))
             .put("reminders", JSONArray(reminders.map { it.json() }))
     }
@@ -99,6 +102,8 @@ data class Profile(
                 entries = (0 until ea.length()).map { Entry.of(ea.getJSONObject(it)) },
                 steps = steps,
                 hourly = hourly,
+                fitLevel = o.optInt("fitLevel", d.fitLevel),
+                fitStart = o.optString("fitStart", d.fitStart),
                 reminders = (0 until ra.length()).map { Reminder.of(ra.getJSONObject(it)) },
             )
         }

@@ -240,4 +240,12 @@
     <string name="ex_superman_res">Strengthens the back and improves posture.</string>
     <string name="sets_reps" translatable="false">%1$d x %2$d</string>
     <string name="sets_secs" translatable="false">%1$d x %2$d s</string>
+    <string name="program_day">Day %d</string>
+    <string name="level_easy">Easy</string>
+    <string name="level_mid">Medium</string>
+    <string name="level_hard">Hard</string>
+    <string name="restart_program">Restart from day 1</string>
+    <string name="restart_confirm">Restart the programme from day 1? The daily increase in difficulty starts again.</string>
+    <string name="restart_yes">Restart</string>
+    <string name="recovery_day">Recovery day: a lighter set today.</string>
 </resources>
