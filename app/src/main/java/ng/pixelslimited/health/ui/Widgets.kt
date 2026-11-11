@@ -83,7 +83,7 @@ fun Stat(label: String, value: String) {
     Column {
         Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, Modifier.weight(1.3f), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.End)
+            Text(value, Modifier.weight(1.3f), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"), textAlign = TextAlign.End)
         }
         Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)))
     }
@@ -131,7 +131,7 @@ fun TimelineRow(time: String, title: String, detail: String, first: Boolean, las
     val line = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
     val dot = if (now) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     Row(Modifier.fillMaxWidth().height(64.dp)) {
-        Text(time, Modifier.width(64.dp), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(time, Modifier.width(64.dp), style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         Canvas(Modifier.width(24.dp).fillMaxHeight()) {
             val cx = size.width / 2
             val cy = 11.dp.toPx()

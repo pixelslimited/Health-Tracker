@@ -12,7 +12,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.material3.Typography
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import ng.pixelslimited.health.R
 import androidx.compose.ui.unit.sp
 
 // Two base tones and one accent.
@@ -38,20 +42,33 @@ private val Dark = darkColorScheme(
     outline = Paper.copy(alpha = 0.35f), error = Accent, onError = Paper,
 )
 
+// Inter for text, Inter Display for headings and numerals (bundled, SIL Open Font License).
+val Brand = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
+    Font(R.font.inter_display_bold, FontWeight.Bold),
+    Font(R.font.inter_display_black, FontWeight.Black),
+)
+
 // Nothing smaller than 16sp; tight, heavy headings.
 private val Base = Typography()
-private val Type = Base.copy(
-    displaySmall = Base.displaySmall.copy(fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
-    headlineMedium = Base.headlineMedium.copy(fontSize = 40.sp, lineHeight = 46.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
-    titleLarge = Base.titleLarge.copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold),
-    titleMedium = Base.titleMedium.copy(fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
-    titleSmall = Base.titleSmall.copy(fontSize = 16.sp, lineHeight = 22.sp),
-    bodyLarge = Base.bodyLarge.copy(fontSize = 18.sp, lineHeight = 26.sp, letterSpacing = 0.sp),
-    bodyMedium = Base.bodyMedium.copy(fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
-    bodySmall = Base.bodySmall.copy(fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
-    labelLarge = Base.labelLarge.copy(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
-    labelMedium = Base.labelMedium.copy(fontSize = 16.sp, lineHeight = 22.sp),
-    labelSmall = Base.labelSmall.copy(fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
+private fun TextStyle.brand() = copy(fontFamily = Brand)
+private val Type = Typography(
+    displayLarge = Base.displayLarge.brand().copy(fontWeight = FontWeight.Bold),
+    displayMedium = Base.displayMedium.brand().copy(fontWeight = FontWeight.Bold),
+    displaySmall = Base.displaySmall.brand().copy(fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
+    headlineLarge = Base.headlineLarge.brand().copy(fontWeight = FontWeight.Bold),
+    headlineMedium = Base.headlineMedium.brand().copy(fontSize = 40.sp, lineHeight = 46.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
+    headlineSmall = Base.headlineSmall.brand().copy(fontWeight = FontWeight.Bold),
+    titleLarge = Base.titleLarge.brand().copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold),
+    titleMedium = Base.titleMedium.brand().copy(fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
+    titleSmall = Base.titleSmall.brand().copy(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+    bodyLarge = Base.bodyLarge.brand().copy(fontSize = 18.sp, lineHeight = 26.sp, letterSpacing = 0.sp),
+    bodyMedium = Base.bodyMedium.brand().copy(fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
+    bodySmall = Base.bodySmall.brand().copy(fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
+    labelLarge = Base.labelLarge.brand().copy(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+    labelMedium = Base.labelMedium.brand().copy(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Normal),
+    labelSmall = Base.labelSmall.brand().copy(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Normal, letterSpacing = 0.sp),
 )
 
 @Composable
