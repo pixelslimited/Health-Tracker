@@ -21,12 +21,18 @@ import ng.pixelslimited.health.MainActivity
 import ng.pixelslimited.health.R
 import ng.pixelslimited.health.data.Store
 import ng.pixelslimited.health.data.summary
+import ng.pixelslimited.health.sleep.SleepDetector
 import ng.pixelslimited.health.widget.StepsWidget
 import java.time.LocalDate
 
 /** Counts steps in the background from the phone's hardware step counter. */
 class StepService : Service(), SensorEventListener {
     private var lastShown = 0L
+    private val screen = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            SleepDetector.log(c, i.action == Intent.ACTION_SCREEN_ON)
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -40,6 +46,10 @@ class StepService : Service(), SensorEventListener {
             stopSelf()
             return
         }
+        ContextCompat.registerReceiver(
+            this, screen, android.content.IntentFilter(Intent.ACTION_SCREEN_OFF).apply { addAction(Intent.ACTION_SCREEN_ON) },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         val sm = getSystemService(SensorManager::class.java)
         val sensor = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
         if (sensor == null) stopSelf() else sm.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
@@ -56,6 +66,10 @@ class StepService : Service(), SensorEventListener {
 
     override fun onDestroy() {
         getSystemService(SensorManager::class.java).unregisterListener(this)
+        try {
+            unregisterReceiver(screen)
+        } catch (e: Exception) {
+        }
         Store.flush()
         super.onDestroy()
     }
@@ -64,13 +78,7 @@ class StepService : Service(), SensorEventListener {
 
     override fun onSensorChanged(e: SensorEvent) {
         val total = e.values[0].toLong()
-        val prefs = getSharedPreferences("steps", Context.MODE_PRIVATE)
-        val last = prefs.getLong("last", -1)
-        prefs.edit().putLong("last", total).apply()
-        if (last < 0) return
-        // The counter restarts from zero after a reboot.
-        val delta = if (total >= last) total - last else total
-        if (delta in 1..50000) Store.addSteps(LocalDate.now().toString(), java.time.LocalTime.now().hour, delta.toInt())
+        StepSync.apply(this, total)
         val now = System.currentTimeMillis()
         if (now - lastShown > 30000) {
             lastShown = now

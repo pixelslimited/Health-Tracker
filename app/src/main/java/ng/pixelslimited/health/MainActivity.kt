@@ -33,6 +33,13 @@ class MainActivity : FragmentActivity() {
     private var locked by mutableStateOf(false)
     private var authBusy = false
 
+    override fun onResume() {
+        super.onResume()
+        // Add steps taken while the service was stopped, and detect last night's sleep from screen times.
+        ng.pixelslimited.health.steps.StepSync.catchUp(applicationContext)
+        ng.pixelslimited.health.sleep.SleepDetector.detect(applicationContext)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Store.init(applicationContext)
