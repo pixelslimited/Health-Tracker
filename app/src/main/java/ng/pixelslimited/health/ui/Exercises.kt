@@ -1,6 +1,6 @@
 package ng.pixelslimited.health.ui
 
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -30,8 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.lerp as colorLerp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
@@ -42,51 +42,100 @@ import ng.pixelslimited.health.R
 import ng.pixelslimited.health.data.Entry
 import ng.pixelslimited.health.data.T
 import java.time.LocalDate
+import kotlin.math.PI
+import kotlin.math.acos
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
 
-/** Side-view stick figure: head, neck, pelvis, elbow, wrist, knee, ankle, in a unit square (y grows downward). */
-class Pose(val h: Offset, val n: Offset, val p: Offset, val e: Offset, val w: Offset, val k: Offset, val a: Offset)
+/** One limb: m=0 joint angles in degrees (x, y); m=1 reaches a fixed point; m=2 reaches a point relative to the head; s picks the bend side. */
+class Lb(val m: Int, val x: Float, val y: Float, val s: Float)
 
-private fun o(x: Float, y: Float) = Offset(x, y)
-private fun pose(h: Offset, n: Offset, p: Offset, e: Offset, w: Offset, k: Offset, a: Offset) = Pose(h, n, p, e, w, k, a)
+/** Side-view skeleton pose (y down, angles in degrees, 0 = right, 90 = down): pelvis, torso, head, near and far arm, near and far leg, foot angles. */
+class Pose(
+    val px: Float, val py: Float, val tor: Float, val head: Float,
+    val a1: Lb, val a2: Lb, val l1: Lb, val l2: Lb, val f1: Float, val f2: Float,
+)
 
 class Drill(
     val id: String, val name: Int, val how: Int, val result: Int,
     val sets: Int, val count: Int, val seconds: Boolean,
-    val from: Pose, val to: Pose, val bench: Pair<Offset, Offset>? = null,
+    val keys: List<Pose>, val ms: Int, val face: Offset, val zoom: Float = 1f,
+    val bench: Pair<Offset, Offset>? = null,
 )
 
 object Workouts {
     private val crunch = Drill("crunch", R.string.ex_crunch, R.string.ex_crunch_how, R.string.ex_crunch_res, 3, 15, false,
-        pose(o(.04f, .83f), o(.12f, .85f), o(.38f, .85f), o(.1f, .72f), o(.04f, .8f), o(.56f, .68f), o(.66f, .88f)),
-        pose(o(.14f, .54f), o(.2f, .6f), o(.38f, .85f), o(.2f, .5f), o(.13f, .52f), o(.56f, .68f), o(.66f, .88f)))
+        listOf(
+        Pose(0.5000f, 0.8350f, 180.0000f, 180.0000f,
+            Lb(2, -0.0300f, 0.0350f, -1.0000f), Lb(2, -0.0200f, 0.0300f, -1.0000f), Lb(1, 0.7400f, 0.8550f, -1.0000f), Lb(1, 0.7800f, 0.8550f, -1.0000f), 0.0000f, 0.0000f),
+        Pose(0.5000f, 0.8350f, 218.0000f, 212.0000f,
+            Lb(2, -0.0300f, 0.0350f, -1.0000f), Lb(2, -0.0200f, 0.0300f, -1.0000f), Lb(1, 0.7400f, 0.8550f, -1.0000f), Lb(1, 0.7800f, 0.8550f, -1.0000f), 0.0000f, 0.0000f)),
+        3200, Offset(0.0000f, -1.0000f), 1.0000f)
     private val legRaise = Drill("legraise", R.string.ex_legraise, R.string.ex_legraise_how, R.string.ex_legraise_res, 3, 12, false,
-        pose(o(.04f, .86f), o(.12f, .87f), o(.38f, .87f), o(.25f, .88f), o(.4f, .88f), o(.58f, .87f), o(.78f, .87f)),
-        pose(o(.04f, .86f), o(.12f, .87f), o(.38f, .87f), o(.25f, .88f), o(.4f, .88f), o(.38f, .67f), o(.38f, .47f)))
+        listOf(
+        Pose(0.4500f, 0.8350f, 180.0000f, 180.0000f,
+            Lb(0, 3.0000f, 0.0000f, 1.0000f), Lb(0, 3.0000f, 0.0000f, 1.0000f), Lb(0, 2.0000f, 2.0000f, 1.0000f), Lb(0, 2.0000f, 2.0000f, 1.0000f), -80.0000f, -80.0000f),
+        Pose(0.4500f, 0.8280f, 181.0000f, 181.0000f,
+            Lb(0, 3.0000f, 0.0000f, 1.0000f), Lb(0, 3.0000f, 0.0000f, 1.0000f), Lb(0, -88.0000f, -88.0000f, 1.0000f), Lb(0, -88.0000f, -88.0000f, 1.0000f), -165.0000f, -165.0000f)),
+        4000, Offset(0.0000f, -1.0000f), 1.0000f)
     private val plank = Drill("plank", R.string.ex_plank, R.string.ex_plank_how, R.string.ex_plank_res, 3, 30, true,
-        pose(o(.88f, .52f), o(.78f, .58f), o(.52f, .7f), o(.78f, .88f), o(.92f, .88f), o(.32f, .79f), o(.14f, .87f)),
-        pose(o(.88f, .5f), o(.78f, .56f), o(.52f, .66f), o(.78f, .88f), o(.92f, .88f), o(.32f, .76f), o(.14f, .87f)))
+        listOf(
+        Pose(0.5487f, 0.6668f, -19.1145f, -31.1145f,
+            Lb(1, 0.7800f, 0.8540f, -1.0000f), Lb(1, 0.8000f, 0.8540f, -1.0000f), Lb(1, 0.1500f, 0.8050f, 1.0000f), Lb(1, 0.1700f, 0.8050f, 1.0000f), 85.0000f, 85.0000f),
+        Pose(0.5487f, 0.6729f, -18.3299f, -30.3299f,
+            Lb(1, 0.7800f, 0.8540f, -1.0000f), Lb(1, 0.8000f, 0.8540f, -1.0000f), Lb(1, 0.1500f, 0.8050f, 1.0000f), Lb(1, 0.1700f, 0.8050f, 1.0000f), 85.0000f, 85.0000f)),
+        3000, Offset(0.0000f, 1.0000f), 1.0000f)
     private val climber = Drill("climber", R.string.ex_climber, R.string.ex_climber_how, R.string.ex_climber_res, 3, 30, true,
-        pose(o(.88f, .55f), o(.8f, .6f), o(.54f, .71f), o(.8f, .74f), o(.8f, .88f), o(.34f, .79f), o(.15f, .87f)),
-        pose(o(.88f, .55f), o(.8f, .6f), o(.54f, .71f), o(.8f, .74f), o(.8f, .88f), o(.66f, .78f), o(.52f, .87f)))
+        listOf(
+        Pose(0.5487f, 0.6588f, -19.1145f, -31.1145f,
+            Lb(1, 0.7800f, 0.8540f, -1.0000f), Lb(1, 0.8000f, 0.8540f, -1.0000f), Lb(1, 0.5800f, 0.7900f, 1.0000f), Lb(1, 0.1500f, 0.8050f, 1.0000f), 85.0000f, 85.0000f),
+        Pose(0.5487f, 0.6588f, -19.1145f, -31.1145f,
+            Lb(1, 0.7800f, 0.8540f, -1.0000f), Lb(1, 0.8000f, 0.8540f, -1.0000f), Lb(1, 0.1500f, 0.8050f, 1.0000f), Lb(1, 0.5800f, 0.7900f, 1.0000f), 85.0000f, 85.0000f)),
+        1200, Offset(0.0000f, 1.0000f), 1.0000f)
     private val flutter = Drill("flutter", R.string.ex_flutter, R.string.ex_flutter_how, R.string.ex_flutter_res, 3, 30, true,
-        pose(o(.04f, .86f), o(.12f, .87f), o(.38f, .87f), o(.25f, .88f), o(.4f, .88f), o(.58f, .86f), o(.78f, .83f)),
-        pose(o(.04f, .86f), o(.12f, .87f), o(.38f, .87f), o(.25f, .88f), o(.4f, .88f), o(.58f, .8f), o(.78f, .7f)))
+        listOf(
+        Pose(0.4200f, 0.8350f, 190.0000f, 195.0000f,
+            Lb(0, 3.0000f, 0.0000f, 1.0000f), Lb(0, 3.0000f, 0.0000f, 1.0000f), Lb(0, -10.0000f, -10.0000f, 1.0000f), Lb(0, -34.0000f, -34.0000f, 1.0000f), -70.0000f, -70.0000f),
+        Pose(0.4200f, 0.8350f, 190.0000f, 195.0000f,
+            Lb(0, 3.0000f, 0.0000f, 1.0000f), Lb(0, 3.0000f, 0.0000f, 1.0000f), Lb(0, -34.0000f, -34.0000f, 1.0000f), Lb(0, -10.0000f, -10.0000f, 1.0000f), -70.0000f, -70.0000f)),
+        1100, Offset(0.0000f, -1.0000f), 1.0000f)
     private val pushUp = Drill("pushup", R.string.ex_pushup, R.string.ex_pushup_how, R.string.ex_pushup_res, 3, 10, false,
-        pose(o(.88f, .55f), o(.8f, .6f), o(.54f, .71f), o(.8f, .74f), o(.8f, .88f), o(.34f, .79f), o(.15f, .87f)),
-        pose(o(.87f, .74f), o(.78f, .76f), o(.5f, .81f), o(.68f, .76f), o(.8f, .88f), o(.3f, .84f), o(.15f, .87f)))
+        listOf(
+        Pose(0.5487f, 0.6668f, -19.1145f, -29.1145f,
+            Lb(1, 0.7800f, 0.8540f, -1.0000f), Lb(1, 0.8000f, 0.8540f, -1.0000f), Lb(1, 0.1500f, 0.8050f, 1.0000f), Lb(1, 0.1700f, 0.8050f, 1.0000f), 85.0000f, 85.0000f),
+        Pose(0.5678f, 0.8483f, -20.8978f, -30.8978f,
+            Lb(1, 0.7800f, 0.8540f, -1.0000f), Lb(1, 0.8000f, 0.8540f, -1.0000f), Lb(1, 0.1500f, 0.8050f, 1.0000f), Lb(1, 0.1700f, 0.8050f, 1.0000f), 85.0000f, 85.0000f)),
+        2600, Offset(0.0000f, 1.0000f), 1.0000f)
     private val squat = Drill("squat", R.string.ex_squat, R.string.ex_squat_how, R.string.ex_squat_res, 3, 15, false,
-        pose(o(.5f, .13f), o(.5f, .22f), o(.5f, .5f), o(.58f, .33f), o(.71f, .34f), o(.52f, .7f), o(.5f, .9f)),
-        pose(o(.59f, .34f), o(.55f, .42f), o(.45f, .68f), o(.66f, .43f), o(.8f, .43f), o(.63f, .74f), o(.5f, .9f)))
+        listOf(
+        Pose(0.5000f, 0.4400f, -90.0000f, -92.0000f,
+            Lb(1, 0.7000f, 0.3300f, -1.0000f), Lb(1, 0.6800f, 0.3300f, -1.0000f), Lb(1, 0.5000f, 0.8550f, -1.0000f), Lb(1, 0.4700f, 0.8550f, -1.0000f), 0.0000f, 0.0000f),
+        Pose(0.4000f, 0.6050f, -50.0000f, -60.0000f,
+            Lb(1, 0.7200f, 0.4600f, -1.0000f), Lb(1, 0.7000f, 0.4600f, -1.0000f), Lb(1, 0.5000f, 0.8550f, -1.0000f), Lb(1, 0.4700f, 0.8550f, -1.0000f), 0.0000f, 0.0000f)),
+        3000, Offset(1.0000f, 0.0000f), 1.0000f)
     private val bridge = Drill("bridge", R.string.ex_bridge, R.string.ex_bridge_how, R.string.ex_bridge_res, 3, 15, false,
-        pose(o(.04f, .85f), o(.12f, .86f), o(.38f, .86f), o(.25f, .88f), o(.4f, .88f), o(.56f, .68f), o(.66f, .88f)),
-        pose(o(.04f, .85f), o(.12f, .86f), o(.38f, .6f), o(.25f, .88f), o(.4f, .88f), o(.56f, .64f), o(.66f, .88f)))
+        listOf(
+        Pose(0.4300f, 0.8350f, 180.0000f, 180.0000f,
+            Lb(0, 2.0000f, 0.0000f, 1.0000f), Lb(0, 2.0000f, 0.0000f, 1.0000f), Lb(1, 0.6800f, 0.8550f, -1.0000f), Lb(1, 0.7200f, 0.8550f, -1.0000f), 0.0000f, 0.0000f),
+        Pose(0.4300f, 0.6000f, 122.0000f, 180.0000f,
+            Lb(0, 2.0000f, 0.0000f, 1.0000f), Lb(0, 2.0000f, 0.0000f, 1.0000f), Lb(1, 0.6800f, 0.8550f, -1.0000f), Lb(1, 0.7200f, 0.8550f, -1.0000f), 0.0000f, 0.0000f)),
+        2800, Offset(0.0000f, -1.0000f), 1.0000f)
     private val dip = Drill("dip", R.string.ex_dip, R.string.ex_dip_how, R.string.ex_dip_res, 3, 10, false,
-        pose(o(.3f, .16f), o(.3f, .26f), o(.4f, .56f), o(.3f, .42f), o(.3f, .58f), o(.6f, .62f), o(.8f, .88f)),
-        pose(o(.3f, .32f), o(.3f, .42f), o(.4f, .7f), o(.2f, .5f), o(.3f, .58f), o(.6f, .72f), o(.8f, .88f)),
-        bench = o(.14f, .6f) to o(.46f, .6f))
+        listOf(
+        Pose(0.3700f, 0.6000f, -104.5345f, -92.0000f,
+            Lb(1, 0.2800f, 0.5850f, 1.0000f), Lb(1, 0.2800f, 0.5850f, 1.0000f), Lb(1, 0.6900f, 0.8550f, -1.0000f), Lb(1, 0.7200f, 0.8550f, -1.0000f), -50.0000f, -50.0000f),
+        Pose(0.3700f, 0.7300f, -104.5345f, -92.0000f,
+            Lb(1, 0.2800f, 0.5850f, 1.0000f), Lb(1, 0.2800f, 0.5850f, 1.0000f), Lb(1, 0.6900f, 0.8550f, -1.0000f), Lb(1, 0.7200f, 0.8550f, -1.0000f), -50.0000f, -50.0000f)),
+        2800, Offset(1.0000f, 0.0000f), 1.0000f, bench = Offset(0.1200f, 0.6200f) to Offset(0.3600f, 0.6200f))
     private val superman = Drill("superman", R.string.ex_superman, R.string.ex_superman_how, R.string.ex_superman_res, 3, 12, false,
-        pose(o(.8f, .85f), o(.72f, .86f), o(.46f, .87f), o(.84f, .87f), o(.96f, .87f), o(.26f, .87f), o(.06f, .87f)),
-        pose(o(.8f, .72f), o(.7f, .8f), o(.46f, .87f), o(.84f, .72f), o(.96f, .66f), o(.26f, .8f), o(.06f, .72f)))
+        listOf(
+        Pose(0.5200f, 0.8350f, 0.0000f, 0.0000f,
+            Lb(0, 0.0000f, 0.0000f, 1.0000f), Lb(0, 0.0000f, 0.0000f, 1.0000f), Lb(0, 180.0000f, 180.0000f, 1.0000f), Lb(0, 180.0000f, 180.0000f, 1.0000f), 180.0000f, 180.0000f),
+        Pose(0.5200f, 0.8350f, -17.6000f, -22.0000f,
+            Lb(0, -28.6000f, -28.6000f, 1.0000f), Lb(0, -28.6000f, -28.6000f, 1.0000f), Lb(0, 199.8000f, 199.8000f, 1.0000f), Lb(0, 199.8000f, 199.8000f, 1.0000f), 180.0000f, 180.0000f)),
+        3000, Offset(0.0000f, 1.0000f), 0.8600f)
 
     private val flat = listOf(crunch, legRaise, plank, climber, flutter)
     private val build = listOf(pushUp, squat, bridge, dip, superman)
@@ -128,56 +177,194 @@ object Workouts {
     }
 }
 
-private fun lerp(a: Offset, b: Offset, t: Float) = Offset(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+private const val LTOR = 0.27f
+private const val LNECK = 0.05f
+private const val LTH = 0.215f
+private const val LSH = 0.205f
+private const val LUA = 0.14f
+private const val LFA = 0.13f
+private const val GROUND = 0.89f
 
-private val Skin = Color(0xFF5A3825)
-private val SkinHi = Color(0xFF7D4F35)
-private val SkinFar = Color(0xFF3F271A)
+private val Skin = Color(0xFF5C3926)
+private val SkinHi = Color(0xFF87583C)
+private val SkinFar = Color(0xFF3C261A)
+private val EarShade = Color(0xFF281810)
 private val Hair = Color(0xFF14100E)
 private val Shorts = Color(0xFF2D3644)
+private val ShortsFar = Color(0xFF1E242E)
 private val Shoe = Color(0xFFE8E4DA)
+private val ShoeFar = Color(0xFF96948E)
+private val Sole = Color(0xFF282C32)
 
-/** The drill as a looping two-pose animation of a figure on a mat: it moves from start to end and back. */
+private fun mixf(a: Float, b: Float, t: Float) = a + (b - a) * t
+private fun mixLb(p: Lb, q: Lb, t: Float) = Lb(p.m, mixf(p.x, q.x, t), mixf(p.y, q.y, t), p.s)
+private fun mixPose(p: Pose, q: Pose, t: Float) = Pose(
+    mixf(p.px, q.px, t), mixf(p.py, q.py, t), mixf(p.tor, q.tor, t), mixf(p.head, q.head, t),
+    mixLb(p.a1, q.a1, t), mixLb(p.a2, q.a2, t), mixLb(p.l1, q.l1, t), mixLb(p.l2, q.l2, t),
+    mixf(p.f1, q.f1, t), mixf(p.f2, q.f2, t),
+)
+
+/** Pose at cycle position s in [0,1): eased move from each key to the next, wrapping round to the first. */
+private fun poseAt(keys: List<Pose>, s: Float): Pose {
+    val n = keys.size
+    val v = s * n
+    val i = kotlin.math.floor(v).toInt() % n
+    val f = v - kotlin.math.floor(v)
+    val e = (1f - cos(PI.toFloat() * f)) / 2f
+    return mixPose(keys[i], keys[(i + 1) % n], e)
+}
+
+private fun dirv(deg: Float): Offset {
+    val r = deg * PI.toFloat() / 180f
+    return Offset(cos(r), sin(r))
+}
+
+private fun nrm(a: Offset, b: Offset): Offset {
+    val dx = b.x - a.x
+    val dy = b.y - a.y
+    val l = hypot(dx, dy).coerceAtLeast(1e-6f)
+    return Offset(-dy / l, dx / l)
+}
+
+/** Two-bone reach from s to t: returns the upper and lower bone angles in degrees. */
+private fun ik(s: Offset, t: Offset, l1: Float, l2: Float, bend: Float): Pair<Float, Float> {
+    val dx = t.x - s.x
+    val dy = t.y - s.y
+    val dist = minOf(hypot(dx, dy), l1 + l2 - 1e-4f).coerceAtLeast(1e-3f)
+    val base = atan2(dy, dx)
+    val a = acos(((l1 * l1 + dist * dist - l2 * l2) / (2f * l1 * dist)).coerceIn(-1f, 1f))
+    val a1 = base + bend * a
+    val ex = s.x + l1 * cos(a1)
+    val ey = s.y + l1 * sin(a1)
+    val a2 = atan2(t.y - ey, t.x - ex)
+    return Pair(a1 * 180f / PI.toFloat(), a2 * 180f / PI.toFloat())
+}
+
+private fun reach(s: Offset, head: Offset, lb: Lb, l1: Float, l2: Float): Pair<Offset, Offset> {
+    if (lb.m == 0) {
+        val e = s + dirv(lb.x) * l1
+        return Pair(e, e + dirv(lb.y) * l2)
+    }
+    val t = if (lb.m == 1) Offset(lb.x, lb.y) else head + Offset(lb.x, lb.y)
+    val (a1, a2) = ik(s, t, l1, l2, lb.s)
+    val e = s + dirv(a1) * l1
+    return Pair(e, e + dirv(a2) * l2)
+}
+
+/** The drill as a looping, eased keyframe animation of a jointed figure with real bone lengths, on a mat. */
 @Composable
 fun DrillAnimation(d: Drill) {
     val shirt = MaterialTheme.colorScheme.primary
+    val shirtDark = colorLerp(shirt, Color.Black, 0.3f)
     val mat = MaterialTheme.colorScheme.outlineVariant
-    val t by rememberInfiniteTransition(label = "drill").animateFloat(
-        0f, 1f, infiniteRepeatable(tween(if (d.seconds) 600 else 1200, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "t",
-    )
+    val tr = rememberInfiniteTransition(label = "drill")
+    val s by tr.animateFloat(0f, 1f, infiniteRepeatable(tween(d.ms, easing = LinearEasing), RepeatMode.Restart), label = "s")
+    val breath by tr.animateFloat(0f, 1f, infiniteRepeatable(tween(3600, easing = LinearEasing), RepeatMode.Restart), label = "breath")
     Canvas(Modifier.fillMaxWidth().height(240.dp)) {
-        val side = minOf(size.width, size.height)
-        val left = (size.width - side) / 2
-        fun at(p: Offset) = Offset(left + p.x * side, p.y * side)
-        val f = d.from
-        val g = d.to
-        val h = at(lerp(f.h, g.h, t)); val n = at(lerp(f.n, g.n, t)); val p = at(lerp(f.p, g.p, t))
-        val e = at(lerp(f.e, g.e, t)); val w = at(lerp(f.w, g.w, t)); val k = at(lerp(f.k, g.k, t)); val a = at(lerp(f.a, g.a, t))
-        val u = side
-        fun seg(s: Offset, t2: Offset, width: Float, c: Color) = drawLine(c, s, t2, strokeWidth = width * u, cap = StrokeCap.Round)
-        fun limb(s: Offset, t2: Offset, width: Float) {
-            seg(s, t2, width, Skin)
-            seg(s + Offset(-0.012f * u, -0.012f * u), t2 + Offset(-0.012f * u, -0.012f * u), width * 0.3f, SkinHi)
+        val u = minOf(size.width, size.height)
+        val left = (size.width - u) / 2
+        val z = d.zoom
+        val k = u * z
+        fun X(p: Offset) = Offset(left + (0.5f + (p.x - 0.5f) * z) * u, (GROUND + (p.y - GROUND) * z) * u)
+        fun poly(pts: List<Offset>, c: Color, al: Float = 1f) {
+            val pa = Path()
+            pts.forEachIndexed { i, p -> val q = X(p); if (i == 0) pa.moveTo(q.x, q.y) else pa.lineTo(q.x, q.y) }
+            pa.close()
+            drawPath(pa, c, alpha = al)
         }
-        // Floor mat.
-        drawRoundRect(mat, Offset(left + 0.02f * u, 0.89f * u), androidx.compose.ui.geometry.Size(0.96f * u, 0.045f * u), androidx.compose.ui.geometry.CornerRadius(0.02f * u))
-        d.bench?.let { seg(at(it.first), at(it.second), 0.04f, Shorts) }
-        // Far side arm and leg, darker and slightly behind.
-        val far = Offset(0.022f * u, -0.014f * u)
-        seg(n + far, e + far, 0.045f, SkinFar); seg(e + far, w + far, 0.038f, SkinFar)
-        seg(p + far, k + far, 0.07f, SkinFar); seg(k + far, a + far, 0.05f, SkinFar)
-        drawCircle(Shoe, 0.04f * u, a + far + Offset(0.02f * u, 0f))
-        // Torso in the shirt colour, then near leg, shorts, shoe, near arm and head.
-        seg(n, p, 0.105f, shirt)
-        seg(n + Offset(-0.014f * u, -0.01f * u), p + Offset(-0.014f * u, -0.01f * u), 0.03f, shirt.copy(alpha = 0.55f).compositeOver(Color.White))
-        limb(p, k, 0.075f); limb(k, a, 0.055f)
-        seg(p, lerp(p, k, 0.62f), 0.088f, Shorts)
-        drawCircle(Shoe, 0.045f * u, a + Offset(0.022f * u, 0f))
-        limb(n, e, 0.05f); limb(e, w, 0.042f)
-        drawCircle(Skin, 0.05f * u, w)
-        val up = (h - n).let { v -> val len = kotlin.math.sqrt(v.x * v.x + v.y * v.y).coerceAtLeast(1f); Offset(v.x / len, v.y / len) }
-        drawCircle(Skin, 0.054f * u, h)
-        drawCircle(Hair, 0.05f * u, h + up * (0.018f * u))
+        fun circ(p: Offset, r: Float, c: Color, al: Float = 1f) = drawCircle(c, r * k, X(p), alpha = al)
+        fun taper(a: Offset, b: Offset, wa: Float, wm: Float, wb: Float, c: Color, al: Float = 1f, tm: Float = 0.4f) {
+            val n = nrm(a, b)
+            val m = a + (b - a) * tm
+            poly(listOf(a + n * (wa / 2), m + n * (wm / 2), b + n * (wb / 2), b - n * (wb / 2), m - n * (wm / 2), a - n * (wa / 2)), c, al)
+            circ(a, wa / 2, c, al)
+            circ(b, wb / 2, c, al)
+        }
+        fun lit(a: Offset, b: Offset): Offset {
+            val n = nrm(a, b)
+            return if (n.x * -0.5f + n.y * -0.85f < 0f) Offset(-n.x, -n.y) else n
+        }
+        fun shaded(a: Offset, b: Offset, wa: Float, wm: Float, wb: Float, c: Color, hi: Color, tm: Float = 0.4f) {
+            taper(a, b, wa, wm, wb, c, 1f, tm)
+            val n = lit(a, b)
+            taper(a + n * (wa * 0.22f), b + n * (wb * 0.22f), wa * 0.3f, wm * 0.3f, wb * 0.3f, hi, 0.59f, tm)
+            taper(a - n * (wa * 0.3f), b - n * (wb * 0.3f), wa * 0.25f, wm * 0.25f, wb * 0.25f, Color.Black, 0.27f, tm)
+        }
+        fun foot(a: Offset, ft: Offset, c: Color) {
+            val heel = a - ft * 0.02f
+            val toe = a + ft * 0.085f
+            taper(heel, toe, 0.052f, 0.05f, 0.04f, c)
+            val nn = nrm(a, toe)
+            val sg = if (nn.y > 0f) 1f else -1f
+            drawLine(Sole, X(heel + nn * (0.028f * sg)), X(toe + nn * (0.022f * sg)), strokeWidth = 0.012f * k)
+        }
+
+        // Pose for this instant, with a slow breath in the chest.
+        val br = sin(2f * PI.toFloat() * breath)
+        val base = poseAt(d.keys, s)
+        val po = Pose(base.px, base.py, base.tor + 0.7f * br, base.head - 0.5f * br, base.a1, base.a2, base.l1, base.l2, base.f1, base.f2)
+        val P = Offset(po.px, po.py)
+        val N = P + dirv(po.tor) * LTOR
+        val H = N + dirv(po.head) * (LNECK + 0.045f)
+        val S = N - dirv(po.tor) * 0.035f
+        val (E, W) = reach(S, H, po.a1, LUA, LFA)
+        val (E2, W2) = reach(S, H, po.a2, LUA, LFA)
+        val (K, A) = reach(P, H, po.l1, LTH, LSH)
+        val (K2, A2) = reach(P, H, po.l2, LTH, LSH)
+        val ft = dirv(po.f1)
+        val ft2 = dirv(po.f2)
+
+        // Mat, bench and the shadow the body casts.
+        val mp = Path().apply {
+            moveTo(0f, (GROUND + 0.04f) * u); lineTo(0.07f * u + left, GROUND * u)
+            lineTo(0.93f * u + left, GROUND * u); lineTo(u + left, (GROUND + 0.04f) * u); close()
+        }
+        drawPath(mp, mat)
+        d.bench?.let { (b1, b2) ->
+            taper(Offset(b1.x + 0.02f, b1.y + 0.02f), Offset(b1.x + 0.02f, GROUND), 0.022f, 0.022f, 0.022f, ShortsFar)
+            taper(Offset(b2.x - 0.02f, b2.y + 0.02f), Offset(b2.x - 0.02f, GROUND), 0.022f, 0.022f, 0.022f, ShortsFar)
+            taper(b1, b2, 0.035f, 0.035f, 0.035f, Shorts)
+        }
+        val xs = listOf(P, N, H, E, W, K, A, K2, A2, E2, W2).map { it.x }
+        val cx = (xs.min() + xs.max()) / 2
+        val wd = (xs.max() - xs.min()) / 2 + 0.04f
+        val sa = X(Offset(cx - wd, GROUND - 0.012f))
+        val sb = X(Offset(cx + wd, GROUND + 0.02f))
+        drawOval(Color.Black, sa, androidx.compose.ui.geometry.Size(sb.x - sa.x, sb.y - sa.y), alpha = 0.43f)
+
+        // Far arm and leg, darker and behind.
+        shaded(S, E2, 0.06f, 0.065f, 0.048f, SkinFar, SkinFar); shaded(E2, W2, 0.048f, 0.052f, 0.036f, SkinFar, SkinFar); circ(W2, 0.034f, SkinFar)
+        shaded(P, K2, 0.1f, 0.108f, 0.07f, SkinFar, SkinFar)
+        taper(P, P + (K2 - P) * 0.55f, 0.11f, 0.1f, 0.095f, ShortsFar)
+        shaded(K2, A2, 0.07f, 0.082f, 0.046f, SkinFar, SkinFar); foot(A2, ft2, ShoeFar)
+        // Neck and torso with shirt shading.
+        taper(N, H, 0.062f, 0.058f, 0.056f, Skin)
+        taper(P, N, 0.115f, 0.105f, 0.145f, shirt, 1f, 0.35f)
+        val tn = lit(P, N)
+        taper(P + tn * 0.03f, N + tn * 0.04f, 0.03f, 0.03f, 0.04f, Color.White, 0.18f, 0.35f)
+        taper(P - tn * 0.04f, N - tn * 0.055f, 0.035f, 0.04f, 0.05f, shirtDark, 0.59f, 0.35f)
+        // Near leg with shorts and shoe.
+        shaded(P, K, 0.1f, 0.11f, 0.072f, Skin, SkinHi)
+        taper(P, P + (K - P) * 0.58f, 0.118f, 0.108f, 0.098f, Shorts)
+        taper(P + (K - P) * 0.5f, P + (K - P) * 0.58f, 0.1f, 0.1f, 0.098f, ShortsFar, 0.63f)
+        shaded(K, A, 0.072f, 0.085f, 0.046f, Skin, SkinHi); foot(A, ft, Shoe)
+        // Near arm and hand.
+        shaded(S, E, 0.062f, 0.068f, 0.05f, Skin, SkinHi); shaded(E, W, 0.05f, 0.054f, 0.037f, Skin, SkinHi)
+        circ(W, 0.036f, Skin); circ(W, 0.02f, SkinHi, 0.35f)
+        // Head: face turned toward the preferred side, short hair, ear, eye and brow.
+        val upv = (H - N).let { v -> val l = hypot(v.x, v.y).coerceAtLeast(1e-6f); Offset(v.x / l, v.y / l) }
+        val c1 = Offset(upv.y, -upv.x)
+        val c2 = Offset(-upv.y, upv.x)
+        val face = if (c1.x * d.face.x + c1.y * d.face.y >= c2.x * d.face.x + c2.y * d.face.y) c1 else c2
+        circ(H, 0.057f, Skin)
+        circ(H - face * 0.035f + upv * 0.02f, 0.026f, EarShade, 0.47f)
+        circ(H - face * 0.02f + upv * 0.024f, 0.046f, Hair)
+        circ(H - face * 0.035f - upv * 0.004f, 0.034f, Hair)
+        circ(H + face * 0.045f - upv * 0.002f, 0.014f, Skin)
+        val eye = H + face * 0.025f + upv * 0.008f
+        circ(eye, 0.0085f, Color(0xFFF5F5F5)); circ(eye + face * 0.003f, 0.0045f, Color(0xFF0F0C0A))
+        val brow = eye + upv * 0.016f
+        drawLine(Hair, X(brow - face * 0.012f), X(brow + face * 0.012f), strokeWidth = 0.007f * k)
     }
 }
 
