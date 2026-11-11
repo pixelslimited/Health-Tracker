@@ -194,4 +194,50 @@
     <string name="food_note">Estimate only. The camera recognises common fruits and dishes; check the food and set the portion yourself.</string>
     <string name="f_kcal" translatable="false">%d kcal</string>
     <string name="nutr_note" translatable="false">%1$s %2$d g (P %3$.1f g, F %4$.1f g)</string>
+    <string name="t_work">Workout</string>
+    <string name="workout_today">Today\'s workout</string>
+    <string name="cat_flat">Flat stomach</string>
+    <string name="cat_build">Body building</string>
+    <string name="start_workout">Start workout</string>
+    <string name="next_drill">Next</string>
+    <string name="prev_drill">Back</string>
+    <string name="finish_workout">Finish</string>
+    <string name="how_to">How</string>
+    <string name="expected">Expected result</string>
+    <string name="done_today">Done today</string>
+    <string name="drill_of">Drill %1$d of %2$d</string>
+    <string name="n_drills">%d drills</string>
+    <string name="workout_note">Do each set with control and stop if you feel pain. Results come with regular practice and a healthy diet; exercise does not remove fat from one body area only.</string>
+    <string name="ex_crunch">Crunch</string>
+    <string name="ex_crunch_how">Lie on your back with knees bent. Lift your shoulders towards your knees, then lower slowly.</string>
+    <string name="ex_crunch_res">Tightens the upper abdominal muscles.</string>
+    <string name="ex_legraise">Leg raise</string>
+    <string name="ex_legraise_how">Lie flat with legs straight. Lift your legs until vertical, then lower without touching the floor.</string>
+    <string name="ex_legraise_res">Works the lower belly.</string>
+    <string name="ex_plank">Plank</string>
+    <string name="ex_plank_how">Rest on your forearms and toes with your body in a straight line. Hold and keep breathing.</string>
+    <string name="ex_plank_res">Builds a strong, flat core and steadies your posture.</string>
+    <string name="ex_climber">Mountain climber</string>
+    <string name="ex_climber_how">From a push-up position, drive one knee at a time towards your chest, quickly.</string>
+    <string name="ex_climber_res">Burns calories and trims the waist.</string>
+    <string name="ex_flutter">Flutter kick</string>
+    <string name="ex_flutter_how">Lie on your back with legs straight and low. Kick up and down in small, quick moves.</string>
+    <string name="ex_flutter_res">Firms the lower abdomen and hips.</string>
+    <string name="ex_pushup">Push-up</string>
+    <string name="ex_pushup_how">Hands under your shoulders, body straight. Lower your chest to the floor, then push up.</string>
+    <string name="ex_pushup_res">Builds chest, shoulders and arms.</string>
+    <string name="ex_squat">Squat</string>
+    <string name="ex_squat_how">Stand with feet shoulder-width apart. Sit your hips back and down, then stand up.</string>
+    <string name="ex_squat_res">Builds thighs and glutes.</string>
+    <string name="ex_bridge">Glute bridge</string>
+    <string name="ex_bridge_how">Lie on your back with knees bent. Lift your hips until your body is straight, then lower.</string>
+    <string name="ex_bridge_res">Strengthens glutes and lower back.</string>
+    <string name="ex_dip">Chair dip</string>
+    <string name="ex_dip_how">Hands on the edge of a chair behind you. Bend your elbows to lower your body, then press up.</string>
+    <string name="ex_dip_res">Builds the back of the arms.</string>
+    <string name="ex_superman">Superman</string>
+    <string name="ex_superman_how">Lie face down. Lift arms, chest and legs together, hold briefly, then lower.</string>
+    <string name="ex_superman_res">Strengthens the back and improves posture.</string>
+    <string name="sets_reps" translatable="false">%1$d x %2$d</string>
+    <string name="sets_secs" translatable="false">%1$d x %2$d s</string>
 </resources>

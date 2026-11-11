@@ -13,6 +13,8 @@ object T {
     const val WATER = "WATER"
     const val MEAL = "MEAL"
     const val HBA1C = "HBA1C"
+    /** Finished workout: a=drills done, b=category (0 flat stomach, 1 body building). */
+    const val WORK = "WORK"
 }
 
 /** One logged reading. BP: a=systolic, b=diastolic. GLU: a=mg/dL, b=0 fasting, 1 after meal, 2 random. */
