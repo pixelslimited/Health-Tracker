@@ -93,7 +93,7 @@ fun Settings(data: AppData, me: Profile) {
     Section(s(R.string.goals)) {
         Ruler(me.dailyGoal, { v -> Store.edit { it.copy(dailyGoal = v) } }, 1000..40000, 500, s(R.string.daily_steps))
         Ruler(me.weeklyGoal, { v -> Store.edit { it.copy(weeklyGoal = v) } }, 5000..280000, 1000, s(R.string.weekly_steps))
-        Ruler(me.waterGoal, { v -> Store.edit { it.copy(waterGoal = v) } }, 500..6000, 250, s(R.string.water_ml))
+        Ruler(me.waterGoal, { v -> Store.edit { it.copy(waterGoal = v) } }, 750..6000, 750, s(R.string.water_ml))
         Ruler(me.sleepGoal, { v -> Store.edit { it.copy(sleepGoal = v) } }, 4..12, 1, s(R.string.sleep_hours))
     }
 

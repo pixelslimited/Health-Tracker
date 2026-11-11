@@ -17,7 +17,7 @@
     <string name="streak">أيام متتالية</string>
     <string name="f_days">%d يوم</string>
     <string name="today">اليوم</string>
-    <string name="add_glass">أضف 250 مل</string>
+    <string name="add_glass">إضافة زجاجة (75 سل)</string>
     <string name="latest">الأحدث</string>
     <string name="none">لا توجد بيانات</string>
     <string name="goal">الهدف</string>
@@ -280,4 +280,5 @@
     <string name="keep_alive_desc">بعض الهواتف توقف التطبيقات لتوفير البطارية. اسمح لـ Health Tracker بالعمل دون قيود ليستمر تسجيل الخطوات والأماكن والتطبيق مغلق.</string>
     <string name="allow_btn">سماح</string>
     <string name="exact_alarm_desc">اسمح بالمنبّهات الدقيقة لتصدر التذكيرات في الوقت المحدد.</string>
+    <string name="bottles">زجاجات (75 سل)</string>
 </resources>

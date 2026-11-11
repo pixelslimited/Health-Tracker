@@ -17,7 +17,7 @@
     <string name="streak">Kwanaki a jere</string>
     <string name="f_days">Kwana %d</string>
     <string name="today">Yau</string>
-    <string name="add_glass">Kara 250 ml</string>
+    <string name="add_glass">Ƙara kwalba (75 cl)</string>
     <string name="latest">Na karshe</string>
     <string name="none">Babu bayani</string>
     <string name="goal">Buri</string>
@@ -280,4 +280,5 @@
     <string name="keep_alive_desc">Wasu wayoyi suna rufe manhajoji don adana batir. Bari Health Tracker ya yi aiki ba tare da iyaka ba domin matakai da wurare su ci gaba da rubutuwa ko da an rufe manhajar.</string>
     <string name="allow_btn">Bada izini</string>
     <string name="exact_alarm_desc">Bada izinin ƙararrawa daidai lokaci domin tunatarwa ta yi ƙara a lokacin da aka saita.</string>
+    <string name="bottles">Kwalabe (75 cl)</string>
 </resources>

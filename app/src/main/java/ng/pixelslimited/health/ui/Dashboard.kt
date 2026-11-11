@@ -164,8 +164,9 @@ fun Today(me: Profile, open: (Int) -> Unit, save: (Entry) -> Unit) {
     val water = me.since(T.WATER, dayStart(today)).sumOf { it.a }.toInt()
     Section(s(R.string.t_water)) {
         Stat(s(R.string.today), ctx.getString(R.string.of_total, water, me.waterGoal))
+        Stat(s(R.string.bottles), String.format(Locale.getDefault(), "%.1f", water / 750.0))
         SegBar(water.toFloat() / me.waterGoal)
-        Button(onClick = { save(Entry(T.WATER, now(), 250.0)) }) { Text(s(R.string.add_glass)) }
+        Button(onClick = { save(Entry(T.WATER, now(), 750.0)) }) { Text(s(R.string.add_glass)) }
     }
 }
 
@@ -374,7 +375,7 @@ fun AddFlow(me: Profile, mode: String, set: (String) -> Unit, save: (Entry) -> U
         "meal" -> RulerDialog(s(R.string.t_meal), listOf(RulerSpec(s(R.string.carbs_g), 0..300, 5, 45)), note = true, onClose = close) { v, note ->
             done(Entry(T.MEAL, now(), v[0].toDouble(), note = note))
         }
-        "water" -> RulerDialog(s(R.string.t_water), listOf(RulerSpec("ml", 50..2000, 50, 250)), onClose = close) { v, _ ->
+        "water" -> RulerDialog(s(R.string.t_water), listOf(RulerSpec("ml", 50..3000, 50, 750)), onClose = close) { v, _ ->
             done(Entry(T.WATER, now(), v[0].toDouble()))
         }
         "weight" -> RulerDialog(

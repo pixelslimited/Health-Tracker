@@ -17,7 +17,7 @@
     <string name="streak">Goal streak</string>
     <string name="f_days">%d days</string>
     <string name="today">Today</string>
-    <string name="add_glass">Add 250 ml</string>
+    <string name="add_glass">Add bottle (75 cl)</string>
     <string name="latest">Latest</string>
     <string name="none">No data</string>
     <string name="goal">Goal</string>
@@ -295,4 +295,5 @@
     <string name="keep_alive_desc">Some phones stop apps to save battery. Allow Health Tracker to run unrestricted so steps and places keep recording with the app closed.</string>
     <string name="allow_btn">Allow</string>
     <string name="exact_alarm_desc">Allow exact alarms so reminders ring at the set time.</string>
+    <string name="bottles">Bottles (75 cl)</string>
 </resources>
