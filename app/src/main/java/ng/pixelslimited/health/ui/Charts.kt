@@ -1,5 +1,6 @@
 package ng.pixelslimited.health.ui
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -293,7 +296,7 @@ fun PulseWave(wave: List<Float>) {
         val path = Path()
         wave.indices.forEach { i -> if (i == 0) path.moveTo(at(i).x, at(i).y) else path.lineTo(at(i).x, at(i).y) }
         drawPath(path, ink, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawCircle(accent.copy(alpha = 0.35f * (1f - beat)), (7 + 14 * beat).dp.toPx(), at(wave.size - 1))
+        drawCircle(accent.copy(alpha = 0.35f * (1f - beat)), (7f + 14f * beat).dp.toPx(), at(wave.size - 1))
         drawCircle(accent, 7.dp.toPx(), at(wave.size - 1))
     }
 }
