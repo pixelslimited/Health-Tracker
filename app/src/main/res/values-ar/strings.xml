@@ -154,4 +154,8 @@
     <string name="update_now">تنزيل وتثبيت</string>
     <string name="update_failed">تعذر تنزيل التحديث.</string>
     <string name="made_by">من منتجات Pixels Limited</string>
+    <string name="your_day">يومك</string>
+    <string name="now">الآن</string>
+    <string name="to_go">بقي %d خطوة</string>
+    <string name="goal_reached">تحقق الهدف</string>
 </resources>

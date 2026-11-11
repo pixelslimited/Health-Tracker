@@ -65,6 +65,13 @@ fun streak(p: Profile, today: LocalDate = LocalDate.now()): Int {
 
 private val stamp = DateTimeFormatter.ofPattern("d MMM, HH:mm")
 
+private val clock = DateTimeFormatter.ofPattern("HH:mm")
+private val dayName = DateTimeFormatter.ofPattern("EEE d MMM")
+
+fun timeText(ts: Long): String = Instant.ofEpochMilli(ts).atZone(ZoneId.systemDefault()).format(clock)
+
+fun dateText(): String = LocalDate.now().format(dayName)
+
 fun whenText(ts: Long): String = Instant.ofEpochMilli(ts).atZone(ZoneId.systemDefault()).format(stamp)
 
 fun typeName(ctx: Context, type: String): String = ctx.getString(

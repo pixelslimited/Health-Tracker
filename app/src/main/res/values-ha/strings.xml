@@ -154,4 +154,8 @@
     <string name="update_now">Sauke kuma shigar</string>
     <string name="update_failed">An kasa sauke sabuntawa.</string>
     <string name="made_by">Kayan Pixels Limited</string>
+    <string name="your_day">Ranarka</string>
+    <string name="now">Yanzu</string>
+    <string name="to_go">Saura taki %d</string>
+    <string name="goal_reached">An cika buri</string>
 </resources>

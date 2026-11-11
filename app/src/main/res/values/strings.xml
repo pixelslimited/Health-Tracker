@@ -163,4 +163,8 @@
     <string name="unit_bpm" translatable="false">bpm</string>
     <string name="unit_mgdl" translatable="false">mg/dL</string>
     <string name="of_total" translatable="false">%1$d / %2$d</string>
+    <string name="your_day">Your day</string>
+    <string name="now">Now</string>
+    <string name="to_go">%d steps to go</string>
+    <string name="goal_reached">Goal reached</string>
 </resources>

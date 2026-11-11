@@ -5,7 +5,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.Typography
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 // Two base tones and one accent.
 private val Ink = Color(0xFF14181B)
@@ -30,7 +33,23 @@ private val Dark = darkColorScheme(
     outline = Paper.copy(alpha = 0.35f), error = Accent, onError = Paper,
 )
 
+// Nothing smaller than 16sp; tight, heavy headings.
+private val Base = Typography()
+private val Type = Base.copy(
+    displaySmall = Base.displaySmall.copy(fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
+    headlineMedium = Base.headlineMedium.copy(fontSize = 40.sp, lineHeight = 46.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
+    titleLarge = Base.titleLarge.copy(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold),
+    titleMedium = Base.titleMedium.copy(fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
+    titleSmall = Base.titleSmall.copy(fontSize = 16.sp, lineHeight = 22.sp),
+    bodyLarge = Base.bodyLarge.copy(fontSize = 18.sp, lineHeight = 26.sp, letterSpacing = 0.sp),
+    bodyMedium = Base.bodyMedium.copy(fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
+    bodySmall = Base.bodySmall.copy(fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
+    labelLarge = Base.labelLarge.copy(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold),
+    labelMedium = Base.labelMedium.copy(fontSize = 16.sp, lineHeight = 22.sp),
+    labelSmall = Base.labelSmall.copy(fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
+)
+
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (isSystemInDarkTheme()) Dark else Light, content = content)
+    MaterialTheme(colorScheme = if (isSystemInDarkTheme()) Dark else Light, typography = Type, content = content)
 }

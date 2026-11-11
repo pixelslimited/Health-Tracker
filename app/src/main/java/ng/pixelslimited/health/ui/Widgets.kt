@@ -2,7 +2,20 @@ package ng.pixelslimited.health.ui
 
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -53,16 +66,101 @@ fun s(id: Int): String = stringResource(id)
 
 fun toast(ctx: Context, text: String) = Toast.makeText(ctx, text, Toast.LENGTH_LONG).show()
 
+/** Flat section: a heavy rule, a title, then content. No cards. */
 @Composable
 fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    Column(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.onSurface))
+        Column(Modifier.padding(top = 14.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
             content()
+        }
+    }
+}
+
+@Composable
+fun Stat(label: String, value: String) {
+    Column {
+        Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, Modifier.weight(1.3f), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.End)
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)))
+    }
+}
+
+/** Primary action: solid ink. The accent colour is kept for data. */
+@Composable
+fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    androidx.compose.material3.Button(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 52.dp),
+        enabled = enabled,
+        shape = RoundedCornerShape(6.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MaterialTheme.colorScheme.surface),
+        content = content,
+    )
+}
+
+@Composable
+fun OutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    androidx.compose.material3.OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 52.dp),
+        enabled = enabled,
+        shape = RoundedCornerShape(6.dp),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.onSurface),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+        content = content,
+    )
+}
+
+/** Goal progress as ten blocks. */
+@Composable
+fun SegBar(fraction: Float, segments: Int = 10) {
+    val filled = (fraction.coerceIn(0f, 1f) * segments).toInt()
+    Row(Modifier.fillMaxWidth().height(14.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        repeat(segments) { i ->
+            Box(Modifier.weight(1f).fillMaxHeight().background(if (i < filled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)))
+        }
+    }
+}
+
+@Composable
+fun TimelineRow(time: String, title: String, detail: String, first: Boolean, last: Boolean, now: Boolean) {
+    val line = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+    val dot = if (now) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    Row(Modifier.fillMaxWidth().height(64.dp)) {
+        Text(time, Modifier.width(64.dp), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Canvas(Modifier.width(24.dp).fillMaxHeight()) {
+            val cx = size.width / 2
+            val cy = 11.dp.toPx()
+            drawLine(line, Offset(cx, if (first) cy else 0f), Offset(cx, if (last) cy else size.height), strokeWidth = 2.dp.toPx())
+            drawCircle(dot, radius = if (now) 9.dp.toPx() else 6.dp.toPx(), center = Offset(cx, cy))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+fun BottomBar(tabs: List<Pair<String, ImageVector>>, selected: Int, onSelect: (Int) -> Unit) {
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)))
+        Row(Modifier.fillMaxWidth()) {
+            tabs.forEachIndexed { i, (label, icon) ->
+                val on = i == selected
+                val tint = if (on) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                Column(Modifier.weight(1f).height(76.dp).clickable { onSelect(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.fillMaxWidth().height(3.dp).background(if (on) MaterialTheme.colorScheme.onSurface else Color.Transparent))
+                    Spacer(Modifier.height(12.dp))
+                    Icon(icon, contentDescription = null, tint = tint)
+                    Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = tint, maxLines = 1)
+                }
+            }
         }
     }
 }
@@ -150,55 +248,58 @@ fun RulerDialog(
     )
 }
 
+/** Trend line in ink; only the latest point carries the accent. */
 @Composable
 fun LineChart(values: List<Float>) {
     if (values.size < 2) return
-    val color = MaterialTheme.colorScheme.primary
-    Canvas(Modifier.fillMaxWidth().height(72.dp).padding(vertical = 4.dp)) {
+    val ink = MaterialTheme.colorScheme.onSurface
+    val accent = MaterialTheme.colorScheme.primary
+    val bg = MaterialTheme.colorScheme.background
+    Canvas(Modifier.fillMaxWidth().height(96.dp)) {
+        val pad = 9.dp.toPx()
+        val h = size.height - 2 * pad
+        val w = size.width - 2 * pad
         val min = values.min()
         val span = (values.max() - min).takeIf { it > 0f } ?: 1f
+        fun at(i: Int) = Offset(pad + w * i / (values.size - 1), pad + h - (values[i] - min) / span * h)
+        for (g in 0..2) drawLine(ink.copy(alpha = 0.12f), Offset(0f, pad + h * g / 2), Offset(size.width, pad + h * g / 2), strokeWidth = 1.dp.toPx())
         val path = Path()
-        values.forEachIndexed { i, v ->
-            val x = size.width * i / (values.size - 1)
-            val y = size.height - (v - min) / span * size.height
-            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-        drawPath(path, color, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        values.indices.forEach { i -> if (i == 0) path.moveTo(at(i).x, at(i).y) else path.lineTo(at(i).x, at(i).y) }
+        drawPath(path, ink, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawCircle(ink, 4.dp.toPx(), at(0))
+        drawCircle(bg, 9.dp.toPx(), at(values.size - 1))
+        drawCircle(accent, 7.dp.toPx(), at(values.size - 1))
     }
 }
 
+/** Week bars: today in the accent, days that met the goal in solid ink. */
 @Composable
-fun Bars(values: List<Int>, goal: Int, labels: List<String>) {
+fun Bars(values: List<Int>, goal: Int, labels: List<String>, today: Int) {
     val top = maxOf(values.maxOrNull() ?: 0, goal, 1).toFloat()
+    val ink = MaterialTheme.colorScheme.onSurface
     Column {
-        Row(Modifier.fillMaxWidth().height(96.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
-            values.forEach { v ->
+        Row(Modifier.fillMaxWidth().height(104.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) {
+            values.forEachIndexed { i, v ->
                 Box(
-                    Modifier.weight(1f).fillMaxHeight((v / top).coerceIn(0.03f, 1f)).background(
-                        if (v >= goal) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                        RoundedCornerShape(6.dp),
+                    Modifier.weight(1f).fillMaxHeight((v / top).coerceIn(0.02f, 1f)).background(
+                        when {
+                            i == today -> MaterialTheme.colorScheme.primary
+                            v >= goal -> ink
+                            else -> ink.copy(alpha = 0.3f)
+                        }
                     )
                 )
             }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            labels.forEach { Text(it, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(ink))
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            labels.forEachIndexed { i, l ->
+                Text(
+                    l, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
+                    fontWeight = if (i == today) FontWeight.Bold else FontWeight.Normal,
+                    color = if (i == today) ink else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
-    }
-}
-
-@Composable
-fun Ring(fraction: Float, center: @Composable () -> Unit) {
-    val accent = MaterialTheme.colorScheme.primary
-    val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-    Box(Modifier.size(200.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(200.dp)) {
-            val w = 14.dp.toPx()
-            val area = Size(size.width - w, size.height - w)
-            val origin = Offset(w / 2, w / 2)
-            drawArc(track, -90f, 360f, false, origin, area, style = Stroke(w))
-            drawArc(accent, -90f, 360f * fraction.coerceIn(0f, 1f), false, origin, area, style = Stroke(w, cap = StrokeCap.Round))
-        }
-        center()
     }
 }

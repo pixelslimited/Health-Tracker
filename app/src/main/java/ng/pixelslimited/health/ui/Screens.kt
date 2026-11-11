@@ -27,15 +27,11 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -56,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -67,7 +64,9 @@ import ng.pixelslimited.health.data.Profile
 import ng.pixelslimited.health.data.Store
 import ng.pixelslimited.health.data.T
 import ng.pixelslimited.health.data.bmi
+import ng.pixelslimited.health.data.dateText
 import ng.pixelslimited.health.data.dayStart
+import ng.pixelslimited.health.data.timeText
 import ng.pixelslimited.health.data.findrisc
 import ng.pixelslimited.health.data.last
 import ng.pixelslimited.health.data.level
@@ -90,6 +89,9 @@ import java.util.Locale
 import java.util.concurrent.Executors
 
 private fun now() = System.currentTimeMillis()
+
+private fun toGo(ctx: android.content.Context, steps: Int, goal: Int): String =
+    if (steps >= goal) ctx.getString(R.string.goal_reached) else ctx.getString(R.string.to_go, goal - steps)
 
 @Composable
 fun AppRoot() {
@@ -122,21 +124,17 @@ fun AppRoot() {
     )
     Scaffold(
         bottomBar = {
-            if (!settings) NavigationBar {
-                tabs.forEachIndexed { i, (label, icon) ->
-                    NavigationBarItem(selected = tab == i, onClick = { tab = i }, icon = { Icon(icon, contentDescription = null) }, label = { Text(s(label)) })
-                }
-            }
+            if (!settings) BottomBar(tabs.map { s(it.first) to it.second }, tab) { tab = it }
         }
     ) { pad ->
         Column(
             Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(s(if (settings) R.string.settings else tabs[tab].first), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                    Text(me.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(dateText() + "  /  " + me.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    Text(s(if (settings) R.string.settings else tabs[tab].first), style = MaterialTheme.typography.headlineMedium)
                 }
                 IconButton(onClick = { settings = !settings }) {
                     Icon(if (settings) Icons.Filled.Close else Icons.Filled.Settings, contentDescription = s(R.string.settings))
@@ -173,14 +171,6 @@ fun UpdateCard(release: Updater.Release) {
 }
 
 @Composable
-private fun Stat(label: String, value: String) {
-    Row(Modifier.fillMaxWidth()) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
 fun Today(me: Profile, release: Updater.Release?, save: (Entry) -> Unit) {
     val ctx = LocalContext.current
     val today = LocalDate.now()
@@ -199,27 +189,36 @@ fun Today(me: Profile, release: Updater.Release?, save: (Entry) -> Unit) {
             Button(onClick = { ask.launch(StepService.perms()) }) { Text(s(R.string.enable)) }
         }
     }
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Ring(steps.toFloat() / me.dailyGoal) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(steps.toString(), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-                Text(ctx.getString(R.string.of_goal, me.dailyGoal), style = MaterialTheme.typography.bodyMedium)
-            }
-        }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(s(R.string.steps), style = MaterialTheme.typography.titleMedium)
+        Text(
+            String.format(Locale.getDefault(), "%,d", steps),
+            fontSize = 96.sp, lineHeight = 96.sp, letterSpacing = (-4).sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
+        )
+        SegBar(steps.toFloat() / me.dailyGoal)
+        Text(
+            ctx.getString(R.string.of_goal, me.dailyGoal) + "  /  " + toGo(ctx, steps, me.dailyGoal),
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
     Section(s(R.string.this_week)) {
-        Bars(week, me.dailyGoal, DayOfWeek.values().map { it.getDisplayName(java.time.format.TextStyle.NARROW, Locale.getDefault()) })
+        Bars(week, me.dailyGoal, DayOfWeek.values().map { it.getDisplayName(java.time.format.TextStyle.NARROW, Locale.getDefault()) }, today.dayOfWeek.value - 1)
         Stat(s(R.string.week_total), ctx.getString(R.string.of_total, week.sum(), me.weeklyGoal))
-        LinearProgressIndicator(progress = { (week.sum().toFloat() / me.weeklyGoal).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+        SegBar(week.sum().toFloat() / me.weeklyGoal)
         Stat(s(R.string.streak), ctx.getString(R.string.f_days, streak(me, today)))
     }
     val water = me.since(T.WATER, dayStart(today)).sumOf { it.a }.toInt()
     Section(s(R.string.t_water)) {
         Stat(s(R.string.today), ctx.getString(R.string.of_total, water, me.waterGoal))
-        LinearProgressIndicator(progress = { (water.toFloat() / me.waterGoal).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+        SegBar(water.toFloat() / me.waterGoal)
         Button(onClick = { save(Entry(T.WATER, now(), 250.0)) }) { Text(s(R.string.add_glass)) }
     }
     SleepSection(me, save)
+    val todays = me.entries.filter { it.ts >= dayStart(today) }.sortedBy { it.ts }.takeLast(6)
+    Section(s(R.string.your_day)) {
+        todays.forEachIndexed { i, e -> TimelineRow(timeText(e.ts), typeName(ctx, e.type), e.value(ctx), first = i == 0, last = false, now = false) }
+        TimelineRow(timeText(now()), s(R.string.now), toGo(ctx, steps, me.dailyGoal), first = todays.isEmpty(), last = true, now = true)
+    }
     Section(s(R.string.latest)) {
         listOf(T.HR, T.BP, T.GLU).forEach { type ->
             val e = me.last(type)
