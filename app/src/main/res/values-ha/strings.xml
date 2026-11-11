@@ -158,4 +158,8 @@
     <string name="now">Yanzu</string>
     <string name="to_go">Saura taki %d</string>
     <string name="goal_reached">An cika buri</string>
+    <string name="appearance">Kamanni</string>
+    <string name="theme_system">Saitin waya</string>
+    <string name="theme_light">Haske</string>
+    <string name="theme_dark">Duhu</string>
 </resources>

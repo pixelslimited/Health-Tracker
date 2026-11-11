@@ -71,6 +71,14 @@ fun Settings(data: AppData, me: Profile) {
         OutlinedButton(onClick = { dlg = "profile" }) { Text(s(R.string.add_profile)) }
     }
 
+    Section(s(R.string.appearance)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(R.string.theme_system, R.string.theme_light, R.string.theme_dark).forEachIndexed { i, label ->
+                FilterChip(selected = data.theme == i, onClick = { Store.update { it.copy(theme = i) } }, label = { Text(s(label)) })
+            }
+        }
+    }
+
     Section(s(R.string.about_you)) {
         OutlinedTextField(me.name, { v -> Store.edit { it.copy(name = v) } }, label = { Text(s(R.string.name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

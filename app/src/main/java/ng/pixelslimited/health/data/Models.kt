@@ -93,10 +93,11 @@ data class Profile(
     }
 }
 
-data class AppData(val active: String, val profiles: List<Profile>, val lock: Boolean = false) {
+/** theme: 0 follows the phone, 1 light, 2 dark. */
+data class AppData(val active: String, val profiles: List<Profile>, val lock: Boolean = false, val theme: Int = 0) {
     val me: Profile get() = profiles.firstOrNull { it.id == active } ?: profiles.first()
 
-    fun json(): JSONObject = JSONObject().put("active", active).put("lock", lock).put("profiles", JSONArray(profiles.map { it.json() }))
+    fun json(): JSONObject = JSONObject().put("active", active).put("lock", lock).put("theme", theme).put("profiles", JSONArray(profiles.map { it.json() }))
 
     companion object {
         fun fresh(): AppData {
@@ -107,7 +108,7 @@ data class AppData(val active: String, val profiles: List<Profile>, val lock: Bo
         fun of(o: JSONObject): AppData {
             val pa = o.getJSONArray("profiles")
             val profiles = (0 until pa.length()).map { Profile.of(pa.getJSONObject(it)) }
-            return if (profiles.isEmpty()) fresh() else AppData(o.optString("active", profiles.first().id), profiles, o.optBoolean("lock", false))
+            return if (profiles.isEmpty()) fresh() else AppData(o.optString("active", profiles.first().id), profiles, o.optBoolean("lock", false), o.optInt("theme", 0))
         }
     }
 }

@@ -167,4 +167,8 @@
     <string name="now">Now</string>
     <string name="to_go">%d steps to go</string>
     <string name="goal_reached">Goal reached</string>
+    <string name="appearance">Appearance</string>
+    <string name="theme_system">Phone setting</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
 </resources>

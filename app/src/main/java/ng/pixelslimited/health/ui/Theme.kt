@@ -1,6 +1,11 @@
 package ng.pixelslimited.health.ui
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -50,6 +55,21 @@ private val Type = Base.copy(
 )
 
 @Composable
-fun AppTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (isSystemInDarkTheme()) Dark else Light, typography = Type, content = content)
+fun AppTheme(mode: Int, content: @Composable () -> Unit) {
+    val dark = when (mode) {
+        1 -> false
+        2 -> true
+        else -> isSystemInDarkTheme()
+    }
+    val scheme = if (dark) Dark else Light
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.context as? Activity)?.window ?: return@SideEffect
+        window.statusBarColor = scheme.background.toArgb()
+        window.navigationBarColor = scheme.background.toArgb()
+        val bars = WindowCompat.getInsetsController(window, view)
+        bars.isAppearanceLightStatusBars = !dark
+        bars.isAppearanceLightNavigationBars = !dark
+    }
+    MaterialTheme(colorScheme = scheme, typography = Type, content = content)
 }

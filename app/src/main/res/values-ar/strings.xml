@@ -158,4 +158,8 @@
     <string name="now">الآن</string>
     <string name="to_go">بقي %d خطوة</string>
     <string name="goal_reached">تحقق الهدف</string>
+    <string name="appearance">المظهر</string>
+    <string name="theme_system">إعداد الهاتف</string>
+    <string name="theme_light">فاتح</string>
+    <string name="theme_dark">داكن</string>
 </resources>
