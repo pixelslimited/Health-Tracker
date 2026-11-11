@@ -17,6 +17,8 @@ object T {
     const val WORK = "WORK"
     /** End-of-workout review: a=-1 too hard, 0 just right, 1 too easy. Sets the next days' difficulty. */
     const val REVIEW = "REVIEW"
+    /** Place stop: ts=arrival, a=latitude, b=longitude, note="departure ms|metres travelled to get here|place name". */
+    const val STOP = "STOP"
 }
 
 /** One logged reading. BP: a=systolic, b=diastolic. GLU: a=mg/dL, b=0 fasting, 1 after meal, 2 random. */
@@ -58,18 +60,24 @@ data class Profile(
     val fitLevel: Int = 1,
     val fitStart: String = "",
     val reminders: List<Reminder> = emptyList(),
+    /** Route points per day ("lat,lon,seconds;" repeated) and named places ("lat|lon|name"). */
+    val routes: Map<String, String> = emptyMap(),
+    val labels: List<String> = emptyList(),
 ) {
     fun json(): JSONObject {
         val st = JSONObject()
         steps.forEach { (k, v) -> st.put(k, v) }
         val hr = JSONObject()
         hourly.forEach { (k, v) -> hr.put(k, JSONArray(v)) }
+        val ro = JSONObject()
+        routes.forEach { (k, v) -> ro.put(k, v) }
         return JSONObject().put("id", id).put("name", name).put("birthYear", birthYear).put("heightCm", heightCm)
             .put("male", male).put("dailyGoal", dailyGoal).put("weeklyGoal", weeklyGoal).put("waterGoal", waterGoal)
             .put("fastingMax", fastingMax).put("hba1cTarget", hba1cTarget).put("contactName", contactName)
             .put("contactPhone", contactPhone).put("sleepGoal", sleepGoal).put("sleepStart", sleepStart).put("steps", st).put("hourly", hr).put("fitLevel", fitLevel).put("fitStart", fitStart)
             .put("entries", JSONArray(entries.map { it.json() }))
             .put("reminders", JSONArray(reminders.map { it.json() }))
+            .put("routes", ro).put("labels", JSONArray(labels))
     }
 
     companion object {
@@ -84,6 +92,10 @@ data class Profile(
                 val a = ho.getJSONArray(k)
                 hourly[k] = (0 until a.length()).map { a.getInt(it) }
             }
+            val rj = o.optJSONObject("routes") ?: JSONObject()
+            val routes = HashMap<String, String>()
+            rj.keys().forEach { routes[it] = rj.getString(it) }
+            val la = o.optJSONArray("labels") ?: JSONArray()
             val ea = o.optJSONArray("entries") ?: JSONArray()
             val ra = o.optJSONArray("reminders") ?: JSONArray()
             return Profile(
@@ -107,6 +119,8 @@ data class Profile(
                 fitLevel = o.optInt("fitLevel", d.fitLevel),
                 fitStart = o.optString("fitStart", d.fitStart),
                 reminders = (0 until ra.length()).map { Reminder.of(ra.getJSONObject(it)) },
+                routes = routes,
+                labels = (0 until la.length()).map { la.getString(it) },
             )
         }
     }

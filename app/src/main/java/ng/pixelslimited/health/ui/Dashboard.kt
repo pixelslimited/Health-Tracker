@@ -166,6 +166,7 @@ fun Today(me: Profile, open: (Int) -> Unit, save: (Entry) -> Unit) {
     }
     WorkoutBlock(me, me.since(T.WORK, dayStart(today)).sumOf { it.a }.toInt(), { training = true }, cat) { cat = it }
     if (training) WorkoutDialog(cat, Workouts.plan(cat, me.fitLevel, Workouts.programDay(me.fitStart), Workouts.adjust(me)), { training = false }) { it.forEach(save); training = false }
+    PlacesBlock(me)
     val water = me.since(T.WATER, dayStart(today)).sumOf { it.a }.toInt()
     Section(s(R.string.t_water)) {
         Stat(s(R.string.today), ctx.getString(R.string.of_total, water, me.waterGoal))

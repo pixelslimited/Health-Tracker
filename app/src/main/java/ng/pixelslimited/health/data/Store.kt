@@ -66,6 +66,9 @@ object Store {
         p.copy(steps = p.steps + (day to ((p.steps[day] ?: 0) + n)), hourly = kept)
     }
 
+    /** Append recorded route points to a day. */
+    fun addRoute(day: String, pts: String) = edit { p -> p.copy(routes = p.routes + (day to ((p.routes[day] ?: "") + pts))) }
+
     fun flush() {
         saveJob?.cancel()
         scope.launch { save() }

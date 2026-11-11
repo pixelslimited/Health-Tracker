@@ -21,6 +21,7 @@ import ng.pixelslimited.health.MainActivity
 import ng.pixelslimited.health.R
 import ng.pixelslimited.health.data.Store
 import ng.pixelslimited.health.data.summary
+import ng.pixelslimited.health.places.PlaceTracker
 import ng.pixelslimited.health.sleep.SleepDetector
 import ng.pixelslimited.health.widget.StepsWidget
 import java.time.LocalDate
@@ -39,17 +40,27 @@ class StepService : Service(), SensorEventListener {
     override fun onCreate() {
         super.onCreate()
         Store.init(applicationContext)
-        val type = if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH else 0
+        val plain = if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
+        else if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST else 0
+        var located = PlaceTracker.canRun(this)
+        val both = if (located && Build.VERSION.SDK_INT >= 34) plain or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else plain
         try {
-            ServiceCompat.startForeground(this, 1, notification(), type)
+            ServiceCompat.startForeground(this, 1, notification(), both)
         } catch (e: Exception) {
-            stopSelf()
-            return
+            // Location type not allowed from here (no background permission): keep counting steps only.
+            located = false
+            try {
+                ServiceCompat.startForeground(this, 1, notification(), plain)
+            } catch (e2: Exception) {
+                stopSelf()
+                return
+            }
         }
         ContextCompat.registerReceiver(
             this, screen, android.content.IntentFilter(Intent.ACTION_SCREEN_OFF).apply { addAction(Intent.ACTION_SCREEN_ON) },
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+        if (located) PlaceTracker.start(this)
         val sm = getSystemService(SensorManager::class.java)
         val sensor = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
         if (sensor == null) stopSelf() else sm.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
@@ -66,6 +77,7 @@ class StepService : Service(), SensorEventListener {
 
     override fun onDestroy() {
         getSystemService(SensorManager::class.java).unregisterListener(this)
+        PlaceTracker.stop()
         try {
             unregisterReceiver(screen)
         } catch (e: Exception) {

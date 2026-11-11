@@ -258,4 +258,24 @@
     <string name="f_m" translatable="false">%d m</string>
     <string name="f_km" translatable="false">%.2f km</string>
     <string name="update_short">Update</string>
+    <string name="places">Places</string>
+    <string name="places_title">Places and routes</string>
+    <string name="places_desc">Logs where you stop, the route between stops and the distance each day. Stored only on this phone.</string>
+    <string name="places_open">Open map and history</string>
+    <string name="places_summary">%1$d stops, %2$s</string>
+    <string name="n_stops">%1$d stops</string>
+    <string name="places_none">No stops recorded this day.</string>
+    <string name="places_here">Stopped here since %1$s</string>
+    <string name="places_from_prev">%1$s from the previous stop</string>
+    <string name="places_rename">Name this place</string>
+    <string name="places_hint">Place name</string>
+    <string name="places_save">Save</string>
+    <string name="places_delete">Delete location history</string>
+    <string name="places_delete_q">Delete all stops and routes from this phone? Named places stay.</string>
+    <string name="places_home">Home</string>
+    <string name="places_work">Work</string>
+    <string name="day_prev">Previous day</string>
+    <string name="day_next">Next day</string>
+    <string name="t_stop">Stop</string>
+    <string name="places_maps">Open in Maps</string>
 </resources>

@@ -98,6 +98,7 @@ fun typeName(ctx: Context, type: String): String = ctx.getString(
         T.MEAL -> R.string.t_meal
         T.WORK -> R.string.t_work
         T.REVIEW -> R.string.t_review
+        T.STOP -> R.string.t_stop
         else -> R.string.t_hba1c
     }
 )
@@ -111,6 +112,7 @@ fun Entry.value(ctx: Context): String = when (type) {
     T.WATER -> ctx.getString(R.string.f_ml, a.toInt())
     T.MEAL -> ctx.getString(R.string.f_carbs, a.toInt()) + (if (b > 0) " / " + ctx.getString(R.string.f_kcal, b.toInt()) else "") + if (note.isBlank()) "" else " - $note"
     T.WORK -> ctx.getString(R.string.n_drills, a.toInt())
+    T.STOP -> note.substringAfterLast('|').ifBlank { String.format(java.util.Locale.US, "%.4f, %.4f", a, b) }
     T.REVIEW -> ctx.getString(if (a > 0) R.string.rev_easy else if (a < 0) R.string.rev_hard else R.string.rev_ok)
     else -> ctx.getString(R.string.f_pct, a)
 }

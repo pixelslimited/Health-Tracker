@@ -243,4 +243,24 @@
     <string name="review_hint">Amsarka ce za ta tsara wahalar daga gobe.</string>
     <string name="distance">Nisa</string>
     <string name="update_short">Sabunta</string>
+    <string name="places">Wurare</string>
+    <string name="places_title">Wurare da hanyoyi</string>
+    <string name="places_desc">Yana rubuta inda ka tsaya, hanyar da ka bi da nisan kowace rana. Ana ajiyewa a wannan wayar kawai.</string>
+    <string name="places_open">Bude taswira da tarihi</string>
+    <string name="places_summary">Tasha %1$d, %2$s</string>
+    <string name="n_stops">Tasha %1$d</string>
+    <string name="places_none">Babu tasha da aka rubuta a wannan ranar.</string>
+    <string name="places_here">Ka tsaya a nan tun %1$s</string>
+    <string name="places_from_prev">%1$s daga tashar da ta gabata</string>
+    <string name="places_rename">Sa wa wurin suna</string>
+    <string name="places_hint">Sunan wuri</string>
+    <string name="places_save">Ajiye</string>
+    <string name="places_delete">Share tarihin wurare</string>
+    <string name="places_delete_q">A share dukkan tasha da hanyoyi daga wannan wayar? Wuraren da aka sa wa suna za su tsaya.</string>
+    <string name="places_home">Gida</string>
+    <string name="places_work">Wurin aiki</string>
+    <string name="day_prev">Ranar da ta gabata</string>
+    <string name="day_next">Rana ta gaba</string>
+    <string name="t_stop">Tasha</string>
+    <string name="places_maps">Bude a Taswira</string>
 </resources>

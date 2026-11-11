@@ -243,4 +243,24 @@
     <string name="review_hint">إجابتك تحدد مستوى الصعوبة من الغد.</string>
     <string name="distance">المسافة</string>
     <string name="update_short">تحديث</string>
+    <string name="places">الأماكن</string>
+    <string name="places_title">الأماكن والمسارات</string>
+    <string name="places_desc">يسجّل أين تتوقف والمسار بين التوقفات والمسافة كل يوم. يُحفظ على هذا الهاتف فقط.</string>
+    <string name="places_open">فتح الخريطة والسجل</string>
+    <string name="places_summary">%1$d توقفات، %2$s</string>
+    <string name="n_stops">%1$d توقفات</string>
+    <string name="places_none">لا توجد توقفات مسجلة في هذا اليوم.</string>
+    <string name="places_here">متوقف هنا منذ %1$s</string>
+    <string name="places_from_prev">%1$s من التوقف السابق</string>
+    <string name="places_rename">سمِّ هذا المكان</string>
+    <string name="places_hint">اسم المكان</string>
+    <string name="places_save">حفظ</string>
+    <string name="places_delete">حذف سجل المواقع</string>
+    <string name="places_delete_q">حذف جميع التوقفات والمسارات من هذا الهاتف؟ تبقى الأماكن المسماة.</string>
+    <string name="places_home">المنزل</string>
+    <string name="places_work">العمل</string>
+    <string name="day_prev">اليوم السابق</string>
+    <string name="day_next">اليوم التالي</string>
+    <string name="t_stop">توقف</string>
+    <string name="places_maps">فتح في الخرائط</string>
 </resources>
