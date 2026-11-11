@@ -1,5 +1,12 @@
 package ng.pixelslimited.health.ui
 
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedContent
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -126,7 +133,9 @@ fun AppRoot() {
         }
     ) { pad ->
         Column(
-            Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 16.dp),
+            Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState())
+                .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp).fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -141,11 +150,20 @@ fun AppRoot() {
                     Icon(if (settings) Icons.Filled.Close else Icons.Filled.Settings, contentDescription = s(R.string.settings))
                 }
             }
-            if (settings) Settings(data, me) else when (tab) {
-                0 -> Today(me, release, { tab = it }, save)
-                1 -> Vitals(me) { add = it }
-                2 -> SleepScreen(me, save) { add = it }
-                else -> Reports(me) { add = it }
+            AnimatedContent(
+                targetState = if (settings) -1 else tab,
+                transitionSpec = { fadeIn(tween(240)) togetherWith fadeOut(tween(120)) },
+                label = "screen",
+            ) { page ->
+                Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                    when (page) {
+                        -1 -> Settings(data, me)
+                        0 -> Today(me, release, { tab = it }, save)
+                        1 -> Vitals(me) { add = it }
+                        2 -> SleepScreen(me, save) { add = it }
+                        else -> Reports(me) { add = it }
+                    }
+                }
             }
         }
     }

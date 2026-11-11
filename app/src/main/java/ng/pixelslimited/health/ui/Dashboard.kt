@@ -91,6 +91,9 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
     val ctx = LocalContext.current
     val today = LocalDate.now()
     val steps = me.steps[today.toString()] ?: 0
+    val shown by androidx.compose.animation.core.animateIntAsState(steps, androidx.compose.animation.core.tween(900), label = "steps")
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val big = (wide * 0.26f).coerceIn(56f, 96f)
     val week = weekSteps(me, today)
     var granted by remember { mutableStateOf(StepService.canRun(ctx)) }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted = StepService.canRun(ctx) }
@@ -114,20 +117,25 @@ fun Today(me: Profile, release: Updater.Release?, open: (Int) -> Unit, save: (En
             )
         }
         Text(
-            String.format(Locale.getDefault(), "%,d", steps),
-            fontSize = 96.sp, lineHeight = 96.sp, letterSpacing = (-4).sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
+            String.format(Locale.getDefault(), "%,d", shown),
+            fontSize = big.sp, lineHeight = big.sp, letterSpacing = (-4).sp, fontWeight = FontWeight.Black, maxLines = 1, softWrap = false,
         )
         Text(ctx.getString(R.string.goal_n, me.dailyGoal), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SegBar(steps.toFloat() / me.dailyGoal)
         HourBars(me.hoursOf(today), LocalTime.now().hour, s(R.string.hourly_desc))
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Tile(s(R.string.t_hr), me.last(T.HR), me.series(T.HR), Modifier.weight(1f)) { open(1) }
-        Tile(s(R.string.t_bp), me.last(T.BP), me.series(T.BP), Modifier.weight(1f)) { open(1) }
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Tile(s(R.string.t_glu), me.last(T.GLU), me.series(T.GLU), Modifier.weight(1f)) { open(1) }
-        Tile(s(R.string.t_sleep), me.last(T.SLEEP), me.series(T.SLEEP), Modifier.weight(1f)) { open(2) }
+    // Two columns on normal screens, one on very narrow ones, four across on wide ones.
+    val per = if (wide < 340) 1 else if (wide >= 600) 4 else 2
+    val tiles: List<@Composable (Modifier) -> Unit> = listOf(
+        { m -> Tile(s(R.string.t_hr), me.last(T.HR), me.series(T.HR), m) { open(1) } },
+        { m -> Tile(s(R.string.t_bp), me.last(T.BP), me.series(T.BP), m) { open(1) } },
+        { m -> Tile(s(R.string.t_glu), me.last(T.GLU), me.series(T.GLU), m) { open(1) } },
+        { m -> Tile(s(R.string.t_sleep), me.last(T.SLEEP), me.series(T.SLEEP), m) { open(2) } },
+    )
+    tiles.chunked(per).forEach { row ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            row.forEach { t -> t(Modifier.weight(1f)) }
+        }
     }
     Section(s(R.string.this_week)) {
         DayStrip(week, me.dailyGoal, dayLabels(), today.dayOfWeek.value - 1, s(R.string.week_desc))

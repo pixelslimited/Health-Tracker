@@ -37,6 +37,15 @@ import ng.pixelslimited.health.data.Entry
 import java.time.Instant
 import java.time.ZoneId
 
+/** 0 to 1 once, shortly after the chart first appears, so bars and lines grow in. */
+@Composable
+fun rememberGrow(): Float {
+    var go by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { go = true }
+    val v by androidx.compose.animation.core.animateFloatAsState(if (go) 1f else 0f, androidx.compose.animation.core.tween(800), label = "grow")
+    return v
+}
+
 /** Bordered tile on the soft surface. */
 @Composable
 fun Block(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
@@ -87,12 +96,13 @@ fun HourBars(hours: List<Int>, nowHour: Int, desc: String) {
     val ink = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
     val line = MaterialTheme.colorScheme.outlineVariant
+    val grow = rememberGrow()
     Canvas(Modifier.fillMaxWidth().height(72.dp).semantics { contentDescription = desc }) {
         val top = (hours.maxOrNull() ?: 0).coerceAtLeast(1).toFloat()
         val gap = 2.dp.toPx()
         val bw = (size.width - gap * 23) / 24
         hours.forEachIndexed { i, v ->
-            val h = (v / top * size.height).coerceAtLeast(2.dp.toPx())
+            val h = (v / top * size.height * grow).coerceAtLeast(2.dp.toPx())
             val c = when {
                 i == nowHour -> accent
                 v == 0 -> line
@@ -133,6 +143,7 @@ fun RangeBars(readings: List<Pair<Float, Float>>, desc: String) {
     val ink = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
     val line = MaterialTheme.colorScheme.outlineVariant
+    val grow = rememberGrow()
     Canvas(Modifier.fillMaxWidth().height(96.dp).semantics { contentDescription = desc }) {
         val lo = 40f
         val hi = 200f
@@ -141,7 +152,7 @@ fun RangeBars(readings: List<Pair<Float, Float>>, desc: String) {
         val n = readings.size
         readings.forEachIndexed { i, (sys, dia) ->
             val x = size.width * (i + 0.5f) / n
-            drawLine(if (i == n - 1) accent else ink.copy(alpha = 0.7f), Offset(x, y(sys)), Offset(x, y(dia)), strokeWidth = 8.dp.toPx(), cap = StrokeCap.Round)
+            drawLine(if (i == n - 1) accent else ink.copy(alpha = 0.7f), Offset(x, y(dia) + (y(sys) - y(dia)) * grow), Offset(x, y(dia)), strokeWidth = 8.dp.toPx(), cap = StrokeCap.Round)
         }
     }
 }
@@ -172,6 +183,7 @@ fun SleepChart(entries: List<Entry>, desc: String) {
     val accent = MaterialTheme.colorScheme.primary
     val line = MaterialTheme.colorScheme.outlineVariant
     val zone = ZoneId.systemDefault()
+    val grow = rememberGrow()
     Canvas(Modifier.fillMaxWidth().height(132.dp).semantics { contentDescription = desc }) {
         val span = 1080f
         listOf(0f, 360f, 720f).forEach { m ->
@@ -184,7 +196,7 @@ fun SleepChart(entries: List<Entry>, desc: String) {
             val bed = Instant.ofEpochMilli(e.ts - (e.a * 3600000).toLong()).atZone(zone)
             val rel = ((bed.hour * 60 + bed.minute - 1200) + 1440) % 1440
             val top = (rel / span * size.height).coerceIn(0f, size.height)
-            val len = (e.a.toFloat() * 60f / span * size.height).coerceAtLeast(3.dp.toPx())
+            val len = (e.a.toFloat() * 60f / span * size.height * grow).coerceAtLeast(3.dp.toPx())
             val x = size.width * (i + 0.5f) / maxOf(n, 7)
             drawRect(if (i == entries.size - 1) accent else ink.copy(alpha = 0.75f), Offset(x - bw / 2, top), Size(bw, minOf(len, size.height - top)))
         }
@@ -269,6 +281,9 @@ fun PulseWave(wave: List<Float>) {
     val ink = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
     val line = MaterialTheme.colorScheme.outlineVariant
+    val beat by androidx.compose.animation.core.rememberInfiniteTransition(label = "beat").animateFloat(
+        0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900)), label = "ring",
+    )
     Canvas(Modifier.fillMaxWidth().height(96.dp)) {
         drawLine(line, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = 1.dp.toPx())
         if (wave.size < 2) return@Canvas
@@ -278,6 +293,7 @@ fun PulseWave(wave: List<Float>) {
         val path = Path()
         wave.indices.forEach { i -> if (i == 0) path.moveTo(at(i).x, at(i).y) else path.lineTo(at(i).x, at(i).y) }
         drawPath(path, ink, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawCircle(accent.copy(alpha = 0.35f * (1f - beat)), (7 + 14 * beat).dp.toPx(), at(wave.size - 1))
         drawCircle(accent, 7.dp.toPx(), at(wave.size - 1))
     }
 }

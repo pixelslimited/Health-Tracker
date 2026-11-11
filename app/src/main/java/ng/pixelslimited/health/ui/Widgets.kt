@@ -1,5 +1,6 @@
 package ng.pixelslimited.health.ui
 
+import androidx.compose.ui.graphics.graphicsLayer
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -92,9 +93,13 @@ fun Stat(label: String, value: String) {
 /** Primary action: solid ink. The accent colour is kept for data. */
 @Composable
 fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by androidx.compose.foundation.interaction.collectIsPressedAsState(src)
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.97f else 1f, androidx.compose.animation.core.tween(90), label = "press")
     androidx.compose.material3.Button(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 52.dp),
+        interactionSource = src,
+        modifier = modifier.heightIn(min = 52.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         enabled = enabled,
         shape = RoundedCornerShape(6.dp),
         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MaterialTheme.colorScheme.surface),
@@ -104,9 +109,13 @@ fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean 
 
 @Composable
 fun OutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
+    val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by androidx.compose.foundation.interaction.collectIsPressedAsState(src)
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (pressed) 0.97f else 1f, androidx.compose.animation.core.tween(90), label = "press")
     androidx.compose.material3.OutlinedButton(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 52.dp),
+        interactionSource = src,
+        modifier = modifier.heightIn(min = 52.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         enabled = enabled,
         shape = RoundedCornerShape(6.dp),
         border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.onSurface),
@@ -118,10 +127,13 @@ fun OutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: 
 /** Goal progress as ten blocks. */
 @Composable
 fun SegBar(fraction: Float, segments: Int = 10) {
-    val filled = (fraction.coerceIn(0f, 1f) * segments).toInt()
+    val f by androidx.compose.animation.core.animateFloatAsState(fraction.coerceIn(0f, 1f), androidx.compose.animation.core.tween(800), label = "seg")
     Row(Modifier.fillMaxWidth().height(14.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         repeat(segments) { i ->
-            Box(Modifier.weight(1f).fillMaxHeight().background(if (i < filled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)))
+            val part = (f * segments - i).coerceIn(0f, 1f)
+            Box(Modifier.weight(1f).fillMaxHeight().background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f))) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(part).background(MaterialTheme.colorScheme.primary))
+            }
         }
     }
 }
