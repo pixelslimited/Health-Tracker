@@ -104,12 +104,19 @@ object Workouts {
      * Harder with each programme day (about 4% more a day, up to 80% more), by difficulty level
      * (more drills, more sets, higher counts), with a lighter recovery day every seventh day.
      */
-    fun plan(cat: Int, level: Int, day: Int): List<Planned> {
+    /** Net review score from earlier days of this programme (+ too easy, - too hard); today's review counts from tomorrow. */
+    fun adjust(me: ng.pixelslimited.health.data.Profile, today: LocalDate = LocalDate.now()): Int {
+        val from = if (me.fitStart.isBlank()) 0L else ng.pixelslimited.health.data.dayStart(LocalDate.parse(me.fitStart))
+        val to = ng.pixelslimited.health.data.dayStart(today)
+        return me.entries.filter { it.type == T.REVIEW && it.ts >= from && it.ts < to }.sumOf { it.a }.toInt().coerceIn(-6, 6)
+    }
+
+    fun plan(cat: Int, level: Int, day: Int, adj: Int = 0): List<Planned> {
         val list = if (cat == 0) flat else build
         val start = (day - 1) % list.size
         val base = listOf(0.7f, 1f, 1.3f)[level.coerceIn(0, 2)]
         val ramp = (1f + 0.04f * (day - 1)).coerceAtMost(1.8f)
-        val factor = base * ramp * (if (isRecovery(day)) 0.6f else 1f)
+        val factor = base * ramp * (1f + 0.08f * adj).coerceAtLeast(0.4f) * (if (isRecovery(day)) 0.6f else 1f)
         val drills = 3 + level.coerceIn(0, 2)
         val sets = 2 + level.coerceIn(0, 2)
         return List(drills) { n ->
@@ -183,7 +190,7 @@ fun WorkoutBlock(me: ng.pixelslimited.health.data.Profile, done: Int, onStart: (
         if (me.fitStart.isBlank()) ng.pixelslimited.health.data.Store.edit { it.copy(fitStart = LocalDate.now().toString()) }
     }
     val day = Workouts.programDay(me.fitStart)
-    val list = Workouts.plan(cat, me.fitLevel, day)
+    val list = Workouts.plan(cat, me.fitLevel, day, Workouts.adjust(me))
     Block {
         MetricHeader(s(R.string.workout_today), ctx.getString(R.string.of_total, done.coerceAtMost(list.size), list.size))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -225,9 +232,10 @@ fun WorkoutBlock(me: ng.pixelslimited.health.data.Profile, done: Int, onStart: (
 }
 
 @Composable
-fun WorkoutDialog(cat: Int, list: List<Workouts.Planned>, onClose: () -> Unit, onFinish: (Entry) -> Unit) {
+fun WorkoutDialog(cat: Int, list: List<Workouts.Planned>, onClose: () -> Unit, onFinish: (List<Entry>) -> Unit) {
     val ctx = LocalContext.current
     var i by remember { mutableIntStateOf(0) }
+    var reviewing by remember { mutableStateOf(false) }
     val pl = list[i]
     val d = pl.drill
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -236,6 +244,17 @@ fun WorkoutDialog(cat: Int, list: List<Workouts.Planned>, onClose: () -> Unit, o
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(s(if (cat == 0) R.string.cat_flat else R.string.cat_build), Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
                     TextButton(onClick = onClose) { Text(s(R.string.close)) }
+                }
+                if (reviewing) {
+                    Text(s(R.string.review_title), style = MaterialTheme.typography.headlineMedium)
+                    Text(s(R.string.review_hint), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    listOf(R.string.rev_easy to 1.0, R.string.rev_ok to 0.0, R.string.rev_hard to -1.0).forEach { (label, score) ->
+                        Button(onClick = {
+                            val now = System.currentTimeMillis()
+                            onFinish(listOf(Entry(T.WORK, now, list.size.toDouble(), cat.toDouble()), Entry(T.REVIEW, now, score)))
+                        }, modifier = Modifier.fillMaxWidth()) { Text(s(label)) }
+                    }
+                    return@Column
                 }
                 Text(ctx.getString(R.string.drill_of, i + 1, list.size), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SegBar((i + 1f) / list.size, list.size)
@@ -252,7 +271,7 @@ fun WorkoutDialog(cat: Int, list: List<Workouts.Planned>, onClose: () -> Unit, o
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (i > 0) OutlinedButton(onClick = { i-- }, modifier = Modifier.weight(1f)) { Text(s(R.string.prev_drill)) }
                     if (i < list.size - 1) Button(onClick = { i++ }, modifier = Modifier.weight(1f)) { Text(s(R.string.next_drill)) }
-                    else Button(onClick = { onFinish(Entry(T.WORK, System.currentTimeMillis(), list.size.toDouble(), cat.toDouble())) }, modifier = Modifier.weight(1f)) { Text(s(R.string.finish_workout)) }
+                    else Button(onClick = { reviewing = true }, modifier = Modifier.weight(1f)) { Text(s(R.string.finish_workout)) }
                 }
                 Text(s(R.string.workout_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

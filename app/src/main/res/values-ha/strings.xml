@@ -235,4 +235,10 @@
     <string name="restart_confirm">Sake fara shirin daga rana ta 1? Ƙarin wahala na yau da kullum zai sake farawa.</string>
     <string name="restart_yes">Sake farawa</string>
     <string name="recovery_day">Ranar hutu: saiti mai sauƙi yau.</string>
+    <string name="t_review">Bitar motsa jiki</string>
+    <string name="review_title">Yaya motsa jikin yau ya kasance?</string>
+    <string name="rev_easy">Mai sauƙi sosai</string>
+    <string name="rev_ok">Daidai ne</string>
+    <string name="rev_hard">Mai wahala sosai</string>
+    <string name="review_hint">Amsarka ce za ta tsara wahalar daga gobe.</string>
 </resources>

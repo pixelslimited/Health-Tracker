@@ -248,4 +248,10 @@
     <string name="restart_confirm">Restart the programme from day 1? The daily increase in difficulty starts again.</string>
     <string name="restart_yes">Restart</string>
     <string name="recovery_day">Recovery day: a lighter set today.</string>
+    <string name="t_review">Workout review</string>
+    <string name="review_title">How was today\'s workout?</string>
+    <string name="rev_easy">Too easy</string>
+    <string name="rev_ok">Just right</string>
+    <string name="rev_hard">Too hard</string>
+    <string name="review_hint">Your answer sets the difficulty from tomorrow.</string>
 </resources>

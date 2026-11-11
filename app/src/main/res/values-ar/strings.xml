@@ -235,4 +235,10 @@
     <string name="restart_confirm">إعادة البرنامج من اليوم الأول؟ ستبدأ الزيادة اليومية في الصعوبة من جديد.</string>
     <string name="restart_yes">إعادة</string>
     <string name="recovery_day">يوم تعافٍ: مجموعة أخف اليوم.</string>
+    <string name="t_review">تقييم التمرين</string>
+    <string name="review_title">كيف كان تمرين اليوم؟</string>
+    <string name="rev_easy">سهل جداً</string>
+    <string name="rev_ok">مناسب تماماً</string>
+    <string name="rev_hard">صعب جداً</string>
+    <string name="review_hint">إجابتك تحدد مستوى الصعوبة من الغد.</string>
 </resources>

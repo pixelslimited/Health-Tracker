@@ -91,6 +91,7 @@ fun typeName(ctx: Context, type: String): String = ctx.getString(
         T.WATER -> R.string.t_water
         T.MEAL -> R.string.t_meal
         T.WORK -> R.string.t_work
+        T.REVIEW -> R.string.t_review
         else -> R.string.t_hba1c
     }
 )
@@ -104,6 +105,7 @@ fun Entry.value(ctx: Context): String = when (type) {
     T.WATER -> ctx.getString(R.string.f_ml, a.toInt())
     T.MEAL -> ctx.getString(R.string.f_carbs, a.toInt()) + (if (b > 0) " / " + ctx.getString(R.string.f_kcal, b.toInt()) else "") + if (note.isBlank()) "" else " - $note"
     T.WORK -> ctx.getString(R.string.n_drills, a.toInt())
+    T.REVIEW -> ctx.getString(if (a > 0) R.string.rev_easy else if (a < 0) R.string.rev_hard else R.string.rev_ok)
     else -> ctx.getString(R.string.f_pct, a)
 }
 
