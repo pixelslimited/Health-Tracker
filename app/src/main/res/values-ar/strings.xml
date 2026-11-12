@@ -281,4 +281,6 @@
     <string name="allow_btn">سماح</string>
     <string name="exact_alarm_desc">اسمح بالمنبّهات الدقيقة لتصدر التذكيرات في الوقت المحدد.</string>
     <string name="bottles">زجاجات (75 سل)</string>
+    <string name="places_list">القائمة</string>
+    <string name="places_hide">إخفاء القائمة</string>
 </resources>

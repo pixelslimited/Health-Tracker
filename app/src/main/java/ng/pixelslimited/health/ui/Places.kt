@@ -16,7 +16,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -209,40 +213,58 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
         android.app.DatePickerDialog(ctx, { _, y, m, d -> startOnMe = false; set(LocalDate.of(y, m + 1, d)) }, cur.year, cur.monthValue - 1, cur.dayOfMonth).show()
     }
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    var listOpen by remember { mutableStateOf(false) }
+    val panel = MaterialTheme.colorScheme.background.copy(alpha = 0.94f)
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(s(R.string.places_title), Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-                    TextButton(onClick = onClose) { Text(s(R.string.close)) }
-                }
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(R.string.pl_day, R.string.pl_week, R.string.pl_month, R.string.pl_year, R.string.pl_range).forEachIndexed { i, label ->
-                        FilterChip(selected = mode == i, onClick = { mode = i; startOnMe = false }, label = { Text(s(label)) })
-                    }
-                }
-                if (mode == 4) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { pick(rFrom) { rFrom = it; if (rTo.isBefore(it)) rTo = it } }, modifier = Modifier.weight(1f)) { Text(s(R.string.pl_from) + " " + rFrom.format(med)) }
-                        OutlinedButton(onClick = { pick(rTo) { rTo = it; if (rFrom.isAfter(it)) rFrom = it } }, modifier = Modifier.weight(1f)) { Text(s(R.string.pl_to) + " " + rTo.format(med)) }
-                    }
-                } else {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { shift(-1) }) { Text(s(R.string.day_prev)) }
-                        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                        OutlinedButton(onClick = { if (to.isBefore(today)) shift(1) }) { Text(s(R.string.day_next)) }
-                    }
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(ctx.getString(R.string.places_summary, stops.size, distanceText(ctx, metres)), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                    OutlinedButton(onClick = { here = PlaceTracker.lastFix(ctx); startOnMe = true; locateTick++ }) { Text(s(R.string.places_locate)) }
-                }
+            Box(Modifier.fillMaxSize()) {
+                // The map is the whole page; every control floats over it.
                 RouteMap(
                     lines, stops, names, dark, MaterialTheme.colorScheme.primary.toArgb(), "$from/$to/$mode/$startOnMe/$locateTick",
-                    here, startOnMe, { renaming = it },
-                    Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(12.dp)),
+                    here, startOnMe, { renaming = it }, Modifier.fillMaxSize(),
                 )
-                LazyColumn(Modifier.weight(1f)) {
+                Surface(
+                    Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(10.dp),
+                    color = panel, shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp,
+                ) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(s(R.string.places_title), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                            TextButton(onClick = onClose) { Text(s(R.string.close)) }
+                        }
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(R.string.pl_day, R.string.pl_week, R.string.pl_month, R.string.pl_year, R.string.pl_range).forEachIndexed { i, label ->
+                                FilterChip(selected = mode == i, onClick = { mode = i; startOnMe = false }, label = { Text(s(label)) })
+                            }
+                        }
+                        if (mode == 4) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = { pick(rFrom) { rFrom = it; if (rTo.isBefore(it)) rTo = it } }, modifier = Modifier.weight(1f)) { Text(s(R.string.pl_from) + " " + rFrom.format(med)) }
+                                OutlinedButton(onClick = { pick(rTo) { rTo = it; if (rFrom.isAfter(it)) rFrom = it } }, modifier = Modifier.weight(1f)) { Text(s(R.string.pl_to) + " " + rTo.format(med)) }
+                            }
+                        } else {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = { shift(-1) }) { Text(s(R.string.day_prev)) }
+                                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                OutlinedButton(onClick = { if (to.isBefore(today)) shift(1) }) { Text(s(R.string.day_next)) }
+                            }
+                        }
+                        Text(ctx.getString(R.string.places_summary, stops.size, distanceText(ctx, metres)), style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                Column(
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+                        Button(onClick = { here = PlaceTracker.lastFix(ctx); startOnMe = true; locateTick++ }) { Text(s(R.string.places_locate)) }
+                        Button(onClick = { listOpen = !listOpen }) { Text(s(if (listOpen) R.string.places_hide else R.string.places_list)) }
+                    }
+                    if (listOpen) Surface(
+                        Modifier.fillMaxWidth().heightIn(max = 340.dp),
+                        color = panel, shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp,
+                    ) {
+                        LazyColumn(Modifier.padding(horizontal = 14.dp)) {
                     if (stops.isEmpty() && days.isEmpty()) item { Text(s(R.string.places_none), Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     if (mode == 0) {
                         itemsIndexed(stops) { i, st ->
@@ -281,6 +303,8 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
                         }
                     }
                     item { TextButton(onClick = { confirm = true }) { Text(s(R.string.places_delete)) } }
+                        }
+                    }
                 }
             }
         }

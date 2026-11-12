@@ -281,4 +281,6 @@
     <string name="allow_btn">Bada izini</string>
     <string name="exact_alarm_desc">Bada izinin ƙararrawa daidai lokaci domin tunatarwa ta yi ƙara a lokacin da aka saita.</string>
     <string name="bottles">Kwalabe (75 cl)</string>
+    <string name="places_list">Jeri</string>
+    <string name="places_hide">Ɓoye jeri</string>
 </resources>
