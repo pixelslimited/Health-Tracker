@@ -117,19 +117,43 @@ object PlaceTracker : LocationListener {
         app = a
         load(a)
         val m = a.getSystemService(LocationManager::class.java)
+        if (register(m, false)) mgr = m
+    }
+
+    private var fast = false
+    private var lastMove = 0L
+
+    /** Slow (battery-friendly) while still; fast, dense fixes while moving so the line follows the road. */
+    @SuppressLint("MissingPermission")
+    private fun register(m: LocationManager, quick: Boolean): Boolean {
+        try { m.removeUpdates(this) } catch (e: Exception) { }
         val have = m.allProviders
-        val plan = if ("fused" in have) listOf("fused" to 60_000L) else listOf("network" to 60_000L, "gps" to 120_000L)
+        val plan = when {
+            quick && "gps" in have -> listOf(Triple("gps", 4_000L, 8f))
+            quick && "fused" in have -> listOf(Triple("fused", 4_000L, 8f))
+            quick -> listOf(Triple("network", 5_000L, 8f))
+            "fused" in have -> listOf(Triple("fused", 60_000L, 0f))
+            else -> listOf(Triple("network", 60_000L, 0f), Triple("gps", 120_000L, 0f))
+        }
         var any = false
-        plan.forEach { (p, every) ->
+        plan.forEach { (p, every, dist) ->
             if (p in have) {
                 try {
-                    m.requestLocationUpdates(p, every, 0f, this, Looper.getMainLooper())
+                    m.requestLocationUpdates(p, every, dist, this, Looper.getMainLooper())
                     any = true
                 } catch (e: Exception) {
                 }
             }
         }
-        if (any) mgr = m
+        if (any) fast = quick
+        return any
+    }
+
+    private fun adapt(now: Long, moved: Boolean) {
+        val m = mgr ?: return
+        if (moved) lastMove = now
+        if (moved && !fast) register(m, true)
+        else if (fast && now - lastMove > 180_000L) register(m, false)
     }
 
     @Synchronized
@@ -172,6 +196,7 @@ object PlaceTracker : LocationListener {
             route(lat, lon, now)
         } else {
             val d = metresBetween(s.pLat, s.pLon, lat, lon)
+            adapt(now, d >= STEP * 2)
             if (d >= STEP) {
                 s.dm += d
                 s.leg += d
