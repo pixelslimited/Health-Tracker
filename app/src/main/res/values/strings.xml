@@ -298,4 +298,9 @@
     <string name="bottles">Bottles (75 cl)</string>
     <string name="places_list">List</string>
     <string name="places_hide">Hide list</string>
+    <string name="timer_alloc">Time allocated</string>
+    <string name="timer_done">Time up</string>
+    <string name="timer_start">Start</string>
+    <string name="timer_pause">Pause</string>
+    <string name="timer_reset">Reset</string>
 </resources>

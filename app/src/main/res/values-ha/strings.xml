@@ -283,4 +283,9 @@
     <string name="bottles">Kwalabe (75 cl)</string>
     <string name="places_list">Jeri</string>
     <string name="places_hide">Ɓoye jeri</string>
+    <string name="timer_alloc">Lokacin da aka ware</string>
+    <string name="timer_done">Lokaci ya cika</string>
+    <string name="timer_start">Fara</string>
+    <string name="timer_pause">Dakata</string>
+    <string name="timer_reset">Sake farawa</string>
 </resources>

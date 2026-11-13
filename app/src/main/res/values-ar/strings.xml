@@ -283,4 +283,9 @@
     <string name="bottles">زجاجات (75 سل)</string>
     <string name="places_list">القائمة</string>
     <string name="places_hide">إخفاء القائمة</string>
+    <string name="timer_alloc">الوقت المخصص</string>
+    <string name="timer_done">انتهى الوقت</string>
+    <string name="timer_start">ابدأ</string>
+    <string name="timer_pause">إيقاف مؤقت</string>
+    <string name="timer_reset">إعادة</string>
 </resources>

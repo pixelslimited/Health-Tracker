@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -33,6 +36,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.lerp as colorLerp
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -66,6 +71,9 @@ class Drill(
 )
 
 object Workouts {
+    /** Time allocated to one exercise: working time for every set plus 30 s rest between sets (about 3 s per rep). */
+    fun allocSeconds(p: Planned): Int = p.sets * (if (p.drill.seconds) p.count else p.count * 3) + (p.sets - 1) * 30
+
     private val crunch = Drill("crunch", R.string.ex_crunch, R.string.ex_crunch_how, R.string.ex_crunch_res, 3, 15, false,
         listOf(
         Pose(0.5000f, 0.8350f, 180.0000f, 180.0000f,
@@ -419,6 +427,38 @@ fun WorkoutBlock(me: ng.pixelslimited.health.data.Profile, done: Int, onStart: (
 }
 
 @Composable
+private fun DrillTimer(total: Int) {
+    val ctx = LocalContext.current
+    var left by remember { mutableIntStateOf(total) }
+    var running by remember { mutableStateOf(false) }
+    LaunchedEffect(running) {
+        while (running && left > 0) {
+            delay(1000)
+            left--
+        }
+        if (running && left == 0) {
+            running = false
+            @Suppress("DEPRECATION")
+            (ctx.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator)?.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300), -1))
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(s(R.string.timer_alloc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            if (left == 0) s(R.string.timer_done) else String.format(java.util.Locale.US, "%d:%02d", left / 60, left % 60),
+            style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum"),
+        )
+        LinearProgressIndicator(progress = { 1f - left.toFloat() / total }, modifier = Modifier.fillMaxWidth())
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { if (left == 0) left = total; running = !running }, modifier = Modifier.weight(1f)) {
+                Text(s(if (running) R.string.timer_pause else R.string.timer_start))
+            }
+            OutlinedButton(onClick = { running = false; left = total }, modifier = Modifier.weight(1f)) { Text(s(R.string.timer_reset)) }
+        }
+    }
+}
+
+@Composable
 fun WorkoutDialog(cat: Int, list: List<Workouts.Planned>, onClose: () -> Unit, onFinish: (List<Entry>) -> Unit) {
     val ctx = LocalContext.current
     var i by remember { mutableIntStateOf(0) }
@@ -451,6 +491,7 @@ fun WorkoutDialog(cat: Int, list: List<Workouts.Planned>, onClose: () -> Unit, o
                     ctx.getString(if (d.seconds) R.string.sets_secs else R.string.sets_reps, pl.sets, pl.count),
                     style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
                 )
+                androidx.compose.runtime.key(i) { DrillTimer(Workouts.allocSeconds(pl)) }
                 Text(s(R.string.how_to), style = MaterialTheme.typography.titleMedium)
                 Text(s(d.how), style = MaterialTheme.typography.bodyLarge)
                 Text(s(R.string.expected), style = MaterialTheme.typography.titleMedium)
