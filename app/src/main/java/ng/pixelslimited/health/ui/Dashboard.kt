@@ -141,7 +141,7 @@ fun Today(me: Profile, open: (Int) -> Unit, save: (Entry) -> Unit) {
         SegBar(steps.toFloat() / me.dailyGoal)
         val hrs = me.hoursOf(today)
         HourBars(hrs, LocalTime.now().hour, s(R.string.hourly_desc)) { h ->
-            String.format(java.util.Locale.US, "%02d:00 - %02d:59", h, h) + "   " + s(R.string.steps) + ": " + String.format(java.util.Locale.getDefault(), "%,d", hrs[h])
+            String.format(java.util.Locale.US, "%02d:00 - %02d:59", h, h) + "   " + ctx.getString(R.string.steps) + ": " + String.format(java.util.Locale.getDefault(), "%,d", hrs[h])
         }
     }
     // Two columns on normal screens, one on very narrow ones, four across on wide ones.
@@ -187,7 +187,7 @@ fun Move(me: Profile, save: (Entry) -> Unit) {
     PlacesBlock(me)
     Section(s(R.string.this_week)) {
         DayStrip(week, me.dailyGoal, dayLabels(), today.dayOfWeek.value - 1, s(R.string.week_desc)) { i ->
-            today.with(java.time.DayOfWeek.MONDAY).plusDays(i.toLong()).format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM")) + "   " + s(R.string.steps) + ": " + String.format(java.util.Locale.getDefault(), "%,d", week[i])
+            today.with(java.time.DayOfWeek.MONDAY).plusDays(i.toLong()).format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM")) + "   " + ctx.getString(R.string.steps) + ": " + String.format(java.util.Locale.getDefault(), "%,d", week[i])
         }
         Stat(s(R.string.goal), ctx.getString(R.string.of_total, week.sum(), me.weeklyGoal))
         Stat(s(R.string.distance), distanceText(ctx, me.metres(week.sum())))
