@@ -67,6 +67,7 @@ object Drive {
         }
         if (sp > maxMs) maxMs = sp
         detect(c, sp, now)
+        ng.pixelslimited.health.steps.StepService.pushSpeed()
     }
 
     private fun detect(c: Context, sp: Float, now: Long) {

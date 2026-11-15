@@ -139,7 +139,10 @@ fun Today(me: Profile, open: (Int) -> Unit, save: (Entry) -> Unit) {
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         SegBar(steps.toFloat() / me.dailyGoal)
-        HourBars(me.hoursOf(today), LocalTime.now().hour, s(R.string.hourly_desc))
+        val hrs = me.hoursOf(today)
+        HourBars(hrs, LocalTime.now().hour, s(R.string.hourly_desc)) { h ->
+            String.format(java.util.Locale.US, "%02d:00 - %02d:59", h, h) + "   " + s(R.string.steps) + ": " + String.format(java.util.Locale.getDefault(), "%,d", hrs[h])
+        }
     }
     // Two columns on normal screens, one on very narrow ones, four across on wide ones.
     val per = if (wide < 340) 1 else if (wide >= 600) 4 else 2
@@ -183,7 +186,9 @@ fun Move(me: Profile, save: (Entry) -> Unit) {
     if (training) WorkoutDialog(cat, Workouts.plan(cat, me.fitLevel, Workouts.programDay(me.fitStart), Workouts.adjust(me)), { training = false }) { it.forEach(save); training = false }
     PlacesBlock(me)
     Section(s(R.string.this_week)) {
-        DayStrip(week, me.dailyGoal, dayLabels(), today.dayOfWeek.value - 1, s(R.string.week_desc))
+        DayStrip(week, me.dailyGoal, dayLabels(), today.dayOfWeek.value - 1, s(R.string.week_desc)) { i ->
+            today.with(java.time.DayOfWeek.MONDAY).plusDays(i.toLong()).format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM")) + "   " + s(R.string.steps) + ": " + String.format(java.util.Locale.getDefault(), "%,d", week[i])
+        }
         Stat(s(R.string.goal), ctx.getString(R.string.of_total, week.sum(), me.weeklyGoal))
         Stat(s(R.string.distance), distanceText(ctx, me.metres(week.sum())))
         SegBar(week.sum().toFloat() / me.weeklyGoal)
@@ -228,8 +233,9 @@ fun Vitals(me: Profile, onAdd: (String) -> Unit) {
             LevelText(level(e))
             Text(ctx.getString(R.string.measured_at, whenText(e.ts)), style = MaterialTheme.typography.bodyMedium, color = muted)
         }
-        val bp = me.entries.filter { it.type == T.BP }.sortedBy { it.ts }.takeLast(7).map { it.a.toFloat() to it.b.toFloat() }
-        if (bp.isNotEmpty()) RangeBars(bp, s(R.string.bp_chart_desc))
+        val bpE = me.entries.filter { it.type == T.BP }.sortedBy { it.ts }.takeLast(7)
+        val bp = bpE.map { it.a.toFloat() to it.b.toFloat() }
+        if (bp.isNotEmpty()) RangeBars(bp, s(R.string.bp_chart_desc)) { i -> whenText(bpE[i].ts) + "   " + bpE[i].value(ctx) }
         Text(s(R.string.bp_hint), style = MaterialTheme.typography.bodyMedium, color = muted)
         Button(onClick = { onAdd("bp") }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.add)) }
     }
@@ -301,7 +307,7 @@ fun SleepScreen(me: Profile, save: (Entry) -> Unit, onAdd: (String) -> Unit) {
     }
     Section(s(R.string.this_week)) {
         val nights = me.entries.filter { it.type == T.SLEEP }.sortedBy { it.ts }.takeLast(7)
-        if (nights.isEmpty()) Text(s(R.string.none)) else SleepChart(nights, s(R.string.sleep_chart_desc))
+        if (nights.isEmpty()) Text(s(R.string.none)) else SleepChart(nights, s(R.string.sleep_chart_desc)) { i -> whenText(nights[i].ts) + "   " + nights[i].value(ctx) }
         Stat(s(R.string.goal), ctx.getString(R.string.f_hours, me.sleepGoal.toDouble()))
     }
     if (me.sleepStart == 0L) {

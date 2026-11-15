@@ -23,14 +23,16 @@ import androidx.compose.ui.unit.sp
 private val Ink = Color(0xFF101417)
 private val Paper = Color(0xFFF4F1EA)
 private val Accent = Color(0xFFE5484D)
+/** A little deeper on the cream paper so it stays readable in light mode. */
+private val AccentLight = Color(0xFFC62F35)
 
 private val Light = lightColorScheme(
-    primary = Accent, onPrimary = Paper, secondary = Ink, onSecondary = Paper,
+    primary = AccentLight, onPrimary = Paper, secondary = Ink, onSecondary = Paper,
     background = Paper, onBackground = Ink, surface = Paper, onSurface = Ink,
     surfaceVariant = Color(0xFFE7E3D9), onSurfaceVariant = Color(0xFF555D62),
-    secondaryContainer = Accent.copy(alpha = 0.16f), onSecondaryContainer = Ink,
+    secondaryContainer = AccentLight.copy(alpha = 0.16f), onSecondaryContainer = Ink,
     surfaceContainer = Color(0xFFE7E3D9), surfaceContainerHigh = Color(0xFFE7E3D9),
-    outline = Ink.copy(alpha = 0.35f), outlineVariant = Color(0xFFCFCBC0), error = Accent, onError = Paper,
+    outline = Ink.copy(alpha = 0.35f), outlineVariant = Color(0xFFCFCBC0), error = AccentLight, onError = Paper,
 )
 
 private val Dark = darkColorScheme(

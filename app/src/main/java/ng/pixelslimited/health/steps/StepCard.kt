@@ -25,7 +25,7 @@ object StepCard {
         val frac = (steps.toFloat() / goal).coerceIn(0f, 1f)
         val night = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val ink = if (night) 0xFFF4F1EA.toInt() else 0xFF101417.toInt()
-        val accent = 0xFFE5484D.toInt()
+        val accent = if (night) 0xFFE5484D.toInt() else 0xFFC62F35.toInt()
         val w = 1000
         val h = if (big) 400 else 124
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
@@ -42,7 +42,11 @@ object StepCard {
         }
         val base = if (big) 124f else 80f
         c.drawText(String.format(Locale.getDefault(), "%,d", steps), 0f, base, num)
-        c.drawText(String.format(Locale.getDefault(), "%d%%", steps * 100L / goal), w.toFloat(), base, pct)
+        // While you are moving, the live speed takes the right edge; otherwise the goal percentage.
+        val fx = ng.pixelslimited.health.drive.Drive.fix
+        val kmh = if (fx != null && System.currentTimeMillis() - fx.ts < 15_000L) Math.round(fx.speed * 3.6f) else 0
+        val right = if (kmh >= 3) ctx.getString(R.string.f_kmh, kmh) else String.format(Locale.getDefault(), "%d%%", steps * 100L / goal)
+        c.drawText(right, w.toFloat(), base, pct)
         val barTop = base + if (big) 26f else 16f
         val barH = if (big) 22f else 14f
         val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = (ink and 0x00FFFFFF) or (0x2A shl 24) }

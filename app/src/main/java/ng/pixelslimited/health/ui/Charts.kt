@@ -22,6 +22,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,43 +99,59 @@ fun Spark(values: List<Float>) {
     }
 }
 
-/** 24 bars, one per hour; the current hour carries the accent. */
+/** Tap a bar to read its value; tap it again to hide it. */
 @Composable
-fun HourBars(hours: List<Int>, nowHour: Int, desc: String) {
+private fun Tip(text: String) {
+    Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+}
+
+/** 24 bars, one per hour; the current hour carries the accent. Tap an hour to see its steps. */
+@Composable
+fun HourBars(hours: List<Int>, nowHour: Int, desc: String, info: (Int) -> String) {
     val ink = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
     val line = MaterialTheme.colorScheme.outlineVariant
     val grow = rememberGrow()
-    Canvas(Modifier.fillMaxWidth().height(72.dp).semantics { contentDescription = desc }) {
-        val top = (hours.maxOrNull() ?: 0).coerceAtLeast(1).toFloat()
-        val gap = 2.dp.toPx()
-        val bw = (size.width - gap * 23) / 24
-        hours.forEachIndexed { i, v ->
-            val h = (v / top * size.height * grow).coerceAtLeast(2.dp.toPx())
-            val c = when {
-                i == nowHour -> accent
-                v == 0 -> line
-                else -> ink.copy(alpha = 0.75f)
+    var sel by remember { mutableIntStateOf(-1) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Canvas(
+            Modifier.fillMaxWidth().height(72.dp).semantics { contentDescription = desc }
+                .pointerInput(hours.size) { detectTapGestures { o -> val i = (o.x / size.width * 24).toInt().coerceIn(0, 23); sel = if (sel == i) -1 else i } },
+        ) {
+            val top = (hours.maxOrNull() ?: 0).coerceAtLeast(1).toFloat()
+            val gap = 2.dp.toPx()
+            val bw = (size.width - gap * 23) / 24
+            hours.forEachIndexed { i, v ->
+                val h = (v / top * size.height * grow).coerceAtLeast(2.dp.toPx())
+                val c = when {
+                    i == sel -> accent
+                    i == nowHour -> accent.copy(alpha = 0.6f)
+                    v == 0 -> line
+                    else -> ink.copy(alpha = if (sel >= 0) 0.35f else 0.75f)
+                }
+                drawRect(c, Offset(i * (bw + gap), size.height - h), Size(bw, h))
             }
-            drawRect(c, Offset(i * (bw + gap), size.height - h), Size(bw, h))
         }
+        if (sel in hours.indices) Tip(info(sel))
     }
 }
 
 /** Seven days: solid when the goal was met, accent for today, ring otherwise. */
 @Composable
-fun DayStrip(values: List<Int>, goal: Int, labels: List<String>, today: Int, desc: String) {
+fun DayStrip(values: List<Int>, goal: Int, labels: List<String>, today: Int, desc: String, info: (Int) -> String) {
     val ink = MaterialTheme.colorScheme.onSurface
     val line = MaterialTheme.colorScheme.outlineVariant
+    var sel by remember { mutableIntStateOf(-1) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Row(Modifier.fillMaxWidth().semantics { contentDescription = desc }, horizontalArrangement = Arrangement.SpaceBetween) {
         values.forEachIndexed { i, v ->
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.weight(1f).clickable { sel = if (sel == i) -1 else i }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 val fill = when {
                     i == today -> MaterialTheme.colorScheme.primary
                     v >= goal -> ink
                     else -> Color.Transparent
                 }
-                Box(Modifier.size(32.dp).background(fill, CircleShape).border(1.5.dp, if (fill == Color.Transparent) line else fill, CircleShape))
+                Box(Modifier.size(32.dp).background(fill, CircleShape).border(if (i == sel) 3.dp else 1.5.dp, if (i == sel) MaterialTheme.colorScheme.primary else if (fill == Color.Transparent) line else fill, CircleShape))
                 Text(
                     labels[i], style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
                     fontWeight = if (i == today) FontWeight.Bold else FontWeight.Normal,
@@ -140,16 +160,23 @@ fun DayStrip(values: List<Int>, goal: Int, labels: List<String>, today: Int, des
             }
         }
     }
+    if (sel in values.indices) Tip(info(sel))
+    }
 }
 
 /** Blood pressure: one bar per reading from diastolic up to systolic. */
 @Composable
-fun RangeBars(readings: List<Pair<Float, Float>>, desc: String) {
+fun RangeBars(readings: List<Pair<Float, Float>>, desc: String, info: (Int) -> String) {
     val ink = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
     val line = MaterialTheme.colorScheme.outlineVariant
     val grow = rememberGrow()
-    Canvas(Modifier.fillMaxWidth().height(96.dp).semantics { contentDescription = desc }) {
+    var sel by remember { mutableIntStateOf(-1) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Canvas(
+        Modifier.fillMaxWidth().height(96.dp).semantics { contentDescription = desc }
+            .pointerInput(readings.size) { detectTapGestures { o -> val i = (o.x / size.width * readings.size).toInt().coerceIn(0, readings.size - 1); sel = if (sel == i) -1 else i } },
+    ) {
         val lo = 40f
         val hi = 200f
         fun y(v: Float) = size.height - (v.coerceIn(lo, hi) - lo) / (hi - lo) * size.height
@@ -157,8 +184,10 @@ fun RangeBars(readings: List<Pair<Float, Float>>, desc: String) {
         val n = readings.size
         readings.forEachIndexed { i, (sys, dia) ->
             val x = size.width * (i + 0.5f) / n
-            drawLine(if (i == n - 1) accent else ink.copy(alpha = 0.7f), Offset(x, y(dia) + (y(sys) - y(dia)) * grow), Offset(x, y(dia)), strokeWidth = 8.dp.toPx(), cap = StrokeCap.Round)
+            drawLine(if (i == sel || (sel < 0 && i == n - 1)) accent else ink.copy(alpha = 0.7f), Offset(x, y(dia) + (y(sys) - y(dia)) * grow), Offset(x, y(dia)), strokeWidth = 8.dp.toPx(), cap = StrokeCap.Round)
         }
+    }
+    if (sel in readings.indices) Tip(info(sel))
     }
 }
 
@@ -183,13 +212,24 @@ fun DotBand(values: List<Float>, lo: Float, hi: Float, desc: String) {
 
 /** Sleep: one floating bar per night from bedtime to wake time (20:00 at the top, 14:00 at the bottom). */
 @Composable
-fun SleepChart(entries: List<Entry>, desc: String) {
+fun SleepChart(entries: List<Entry>, desc: String, info: (Int) -> String) {
     val ink = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
     val line = MaterialTheme.colorScheme.outlineVariant
     val zone = ZoneId.systemDefault()
     val grow = rememberGrow()
-    Canvas(Modifier.fillMaxWidth().height(132.dp).semantics { contentDescription = desc }) {
+    var sel by remember { mutableIntStateOf(-1) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Canvas(
+        Modifier.fillMaxWidth().height(132.dp).semantics { contentDescription = desc }
+            .pointerInput(entries.size) {
+                detectTapGestures { o ->
+                    val slots = maxOf(entries.size, 7)
+                    val i = (o.x / size.width * slots).toInt()
+                    if (i in entries.indices) sel = if (sel == i) -1 else i
+                }
+            },
+    ) {
         val span = 1080f
         listOf(0f, 360f, 720f).forEach { m ->
             val yy = m / span * size.height
@@ -203,8 +243,10 @@ fun SleepChart(entries: List<Entry>, desc: String) {
             val top = (rel / span * size.height).coerceIn(0f, size.height)
             val len = (e.a.toFloat() * 60f / span * size.height * grow).coerceAtLeast(3.dp.toPx())
             val x = size.width * (i + 0.5f) / maxOf(n, 7)
-            drawRect(if (i == entries.size - 1) accent else ink.copy(alpha = 0.75f), Offset(x - bw / 2, top), Size(bw, minOf(len, size.height - top)))
+            drawRect(if (i == sel || (sel < 0 && i == entries.size - 1)) accent else ink.copy(alpha = 0.75f), Offset(x - bw / 2, top), Size(bw, minOf(len, size.height - top)))
         }
+    }
+    if (sel in entries.indices) Tip(info(sel))
     }
 }
 

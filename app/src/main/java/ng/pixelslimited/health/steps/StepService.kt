@@ -30,6 +30,7 @@ import java.time.LocalDate
 /** Counts steps in the background from the phone's hardware step counter. */
 class StepService : Service(), SensorEventListener {
     private var lastShown = 0L
+    private var lastKmh = -1
     private val screen = object : android.content.BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             SleepDetector.log(c, i.action == Intent.ACTION_SCREEN_ON)
@@ -39,6 +40,7 @@ class StepService : Service(), SensorEventListener {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
+        self = this
         super.onCreate()
         Store.init(applicationContext)
         val plain = if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
@@ -77,6 +79,7 @@ class StepService : Service(), SensorEventListener {
     }
 
     override fun onDestroy() {
+        if (self === this) self = null
         getSystemService(SensorManager::class.java).unregisterListener(this)
         PlaceTracker.stop()
         try {
@@ -129,7 +132,24 @@ class StepService : Service(), SensorEventListener {
             .build()
     }
 
+    /** Redraws the card when the speed shown on its right edge changes (at most every 4 s). */
+    private fun refreshSpeed() {
+        val fx = ng.pixelslimited.health.drive.Drive.fix
+        val kmh = if (fx != null) Math.round(fx.speed * 3.6f) else 0
+        val now = System.currentTimeMillis()
+        if (kmh == lastKmh || now - lastShown < 4000) return
+        lastKmh = kmh
+        lastShown = now
+        getSystemService(android.app.NotificationManager::class.java).notify(1, notification())
+    }
+
     companion object {
+        @Volatile private var self: StepService? = null
+
+        fun pushSpeed() {
+            self?.refreshSpeed()
+        }
+
         fun hasSensor(ctx: Context) = ctx.getSystemService(SensorManager::class.java).getDefaultSensor(Sensor.TYPE_STEP_COUNTER) != null
 
         fun perms(): Array<String> = buildList {
