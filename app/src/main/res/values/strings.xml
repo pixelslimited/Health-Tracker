@@ -303,7 +303,7 @@
     <string name="timer_start">Start</string>
     <string name="timer_pause">Pause</string>
     <string name="timer_reset">Reset</string>
-    <string name="drive_title">Drive</string>
+    <string name="drive_title">Drive mode</string>
     <string name="drive_open">Drive screen</string>
     <string name="drive_settings">Settings</string>
     <string name="drive_auto">Open automatically when driving</string>
@@ -341,4 +341,18 @@
     <string name="kmh_unit">km/h</string>
     <string name="drive_min">%d min</string>
     <string name="f_kmh">%d km/h</string>
+    <string name="drive_top">Top</string>
+    <string name="drive_heading">heading</string>
+    <string name="drive_live">Live traffic</string>
+    <string name="drive_novoice">Voice search is not available</string>
+    <string name="drive_hint">Search, or press and hold the map, to set a destination</string>
+    <string name="drive_heavy_adds">Heavy traffic, adds %d min</string>
+    <string name="drive_mod_adds">Moderate traffic, adds %d min</string>
+    <string name="drive_clear_ahead">Clear road ahead</string>
+    <string name="drive_incident_away">%1$s, %2$s away</string>
+    <string name="drive_fastest">Fastest %d min</string>
+    <string name="drive_avoid">Avoid tolls %d min</string>
+    <string name="drive_avoid_none">Avoid tolls</string>
+    <string name="drive_lock_perm">Allow on the lock screen</string>
+    <string name="drive_overlay">Allow display over other apps (opens the screen straight away)</string>
 </resources>

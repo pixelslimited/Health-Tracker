@@ -34,8 +34,8 @@ object Drive {
     /** True while the app is on screen; set by MainActivity. */
     @Volatile var visible = false
 
-    private const val DRIVE_MS = 6f      // about 22 km/h
-    private const val STILL_MS = 2f
+    private const val DRIVE_MS = 2.78f   // 10 km/h
+    private const val STILL_MS = 1.4f
     private var hits = 0
     private var armed = true
     private var slowSince = 0L
@@ -90,6 +90,11 @@ object Drive {
             val i = Intent(c, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .putExtra("drive", true)
+            // With "display over other apps" allowed, Android lets us open the screen straight away.
+            if (android.provider.Settings.canDrawOverlays(c)) {
+                c.startActivity(i)
+                return
+            }
             val pi = PendingIntent.getActivity(c, 4101, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val n = NotificationCompat.Builder(c, App.CH_DRIVE)
                 .setSmallIcon(R.drawable.ic_stat)

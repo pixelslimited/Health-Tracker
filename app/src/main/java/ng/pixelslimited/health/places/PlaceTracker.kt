@@ -197,7 +197,7 @@ object PlaceTracker : LocationListener {
             route(lat, lon, now)
         } else {
             val d = metresBetween(s.pLat, s.pLon, lat, lon)
-            adapt(now, d >= STEP * 2 || (l.hasSpeed() && l.speed >= 3f))
+            adapt(now, d >= STEP * 2 || (l.hasSpeed() && l.speed >= 1.5f))
             if (d >= STEP) {
                 s.dm += d
                 s.leg += d

@@ -15,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +57,7 @@ class MainActivity : FragmentActivity() {
             val data by Store.data.collectAsState()
             AppTheme(data.theme) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    LaunchedEffect(ng.pixelslimited.health.drive.Drive.open) { showOverLock(ng.pixelslimited.health.drive.Drive.open) }
                     if (locked) {
                         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
@@ -65,6 +67,8 @@ class MainActivity : FragmentActivity() {
                     } else {
                         AppRoot()
                     }
+                    // The speedometer shows even over the lock screen and the app lock; the rest of the app stays hidden.
+                    if (ng.pixelslimited.health.drive.Drive.open) ng.pixelslimited.health.ui.DriveScreen { ng.pixelslimited.health.drive.Drive.dismiss() }
                 }
             }
         }
@@ -73,7 +77,19 @@ class MainActivity : FragmentActivity() {
     override fun onStart() {
         super.onStart()
         ng.pixelslimited.health.drive.Drive.visible = true
-        if (locked && !authBusy) unlock()
+        if (locked && !authBusy && !ng.pixelslimited.health.drive.Drive.open) unlock()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun showOverLock(on: Boolean) {
+        if (android.os.Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(on)
+            setTurnScreenOn(on)
+        } else if (on) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        }
     }
 
     override fun onStop() {

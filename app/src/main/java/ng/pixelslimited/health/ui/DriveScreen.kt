@@ -1,12 +1,16 @@
 package ng.pixelslimited.health.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Point
 import android.graphics.Typeface
+import android.net.Uri
+import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.view.MotionEvent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,6 +27,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -32,8 +37,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,17 +48,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -67,22 +70,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -95,8 +102,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ng.pixelslimited.health.R
 import ng.pixelslimited.health.data.distanceText
+import ng.pixelslimited.health.data.metresBetween
 import ng.pixelslimited.health.drive.Drive
 import ng.pixelslimited.health.drive.Hit
+import ng.pixelslimited.health.drive.Incident
 import ng.pixelslimited.health.drive.Route
 import ng.pixelslimited.health.drive.Routing
 import ng.pixelslimited.health.places.PlaceTracker
@@ -115,14 +124,43 @@ import org.osmdroid.views.overlay.TilesOverlay
 import java.io.File
 import java.util.Date
 import java.util.Locale
+import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
+// Drive mode palette: always dark, one lime accent.
+private val BG = Color(0xFF0D1013)
+private val CARD = Color(0xFF171C21)
+private val MAPBG = Color(0xFF11161A)
+private val FIELD = Color(0xFF1E2429)
+private val LINE = Color(0xFF2A3138)
+private val OFF = Color(0xFF3A444C)
+private val GREY = Color(0xFF9AA5AD)
+private val INK = Color(0xFFEEF1F3)
+private val LIME = Color(0xFFC8F031)
+private val RED = Color(0xFFFF5A4F)
+private val AMBER = Color(0xFFFFB020)
+
+private val INTER = FontFamily(Font(R.font.inter_regular), Font(R.font.inter_semibold, FontWeight.SemiBold))
+private val COND = FontFamily(Typeface.create("sans-serif-condensed", Typeface.BOLD))
 private val CARDS = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+private val NAMES = mapOf(0 to "N", 45 to "NE", 90 to "E", 135 to "SE", 180 to "S", 225 to "SW", 270 to "W", 315 to "NW")
 
-private fun clockText(ms: Long): String {
-    val t = ms / 1000
-    return if (t >= 3600) String.format(Locale.US, "%d:%02d:%02d", t / 3600, t % 3600 / 60, t % 60) else String.format(Locale.US, "%d:%02d", t / 60, t % 60)
+@Composable
+private fun Tx(t: String, size: Int, color: Color = INK, cond: Boolean = false, modifier: Modifier = Modifier, align: TextAlign? = null, maxLines: Int = Int.MAX_VALUE) {
+    Text(
+        t, modifier, color = color, fontSize = size.sp, fontFamily = if (cond) COND else INTER,
+        fontWeight = if (cond) FontWeight.SemiBold else FontWeight.Normal, textAlign = align, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+private fun Cell(label: String, value: String, size: Int = 36, color: Color = INK, align: Alignment.Horizontal = Alignment.Start) {
+    Column(horizontalAlignment = align) {
+        Tx(value, size, color, cond = true, maxLines = 1)
+        Tx(label, 16, GREY, maxLines = 1)
+    }
 }
 
 @Composable
@@ -130,11 +168,6 @@ fun DriveScreen(onClose: () -> Unit) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext
     val scope = rememberCoroutineScope()
-    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val accent = MaterialTheme.colorScheme.primary
-    val panel = MaterialTheme.colorScheme.background.copy(alpha = 0.94f)
-    val ink = MaterialTheme.colorScheme.onBackground
-    val sub = MaterialTheme.colorScheme.onSurfaceVariant
     val kb = LocalSoftwareKeyboardController.current
 
     var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) }
@@ -157,10 +190,16 @@ fun DriveScreen(onClose: () -> Unit) {
     var hits by remember { mutableStateOf<List<Hit>>(emptyList()) }
     var dest by remember { mutableStateOf<Hit?>(null) }
     var route by remember { mutableStateOf<Route?>(null) }
+    var alt by remember { mutableStateOf<Route?>(null) }
+    var altTried by remember { mutableStateOf(false) }
+    var useAlt by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var lastFetch by remember { mutableLongStateOf(0L) }
     var avgSp by remember { mutableFloatStateOf(0f) }
+    var limit by remember { mutableStateOf<Int?>(null) }
+    var limitAt by remember { mutableLongStateOf(0L) }
+    var incidents by remember { mutableStateOf<List<Incident>>(emptyList()) }
 
     val fix = Drive.fix
     val live = fix != null && now - fix.ts < 6000
@@ -172,7 +211,6 @@ fun DriveScreen(onClose: () -> Unit) {
     }
     val hdgA by animateFloatAsState(hdg, tween(700), label = "heading")
     val nb = (((bearing ?: 0f) % 360f) + 360f) % 360f
-    val card = CARDS[(((nb + 22.5f) / 45f).toInt()) % 8]
     LaunchedEffect(fix) { fix?.let { avgSp = avgSp * 0.9f + it.speed * 0.1f } }
 
     fun reroute() {
@@ -182,13 +220,16 @@ fun DriveScreen(onClose: () -> Unit) {
         busy = true
         lastFetch = System.currentTimeMillis()
         val k = key
+        val wantAlt = useAlt
         scope.launch(Dispatchers.IO) {
             val r = Routing.route(f.lat, f.lon, d.lat, d.lon, k)
+            val a = if (wantAlt) Routing.route(f.lat, f.lon, d.lat, d.lon, k, true) else null
             withContext(Dispatchers.Main) {
                 busy = false
                 if (dest === d) {
                     val first = route == null && r.route != null
                     if (r.route != null) route = r.route
+                    if (a?.route != null) alt = a.route
                     status = if (r.route == null) ctx.getString(R.string.drive_noroute) else if (r.keyBad) ctx.getString(R.string.drive_keybad) else ""
                     if (first) {
                         fit++
@@ -200,15 +241,32 @@ fun DriveScreen(onClose: () -> Unit) {
     }
     LaunchedEffect(dest) {
         route = null
+        alt = null
+        altTried = false
+        useAlt = false
         status = ""
         while (dest != null) {
             if (Drive.fix != null) reroute()
             delay(if (route == null) 3000L else 90_000L)
         }
     }
-    val prog = remember(fix, route) {
-        val r = route
-        if (r != null && fix != null) r.progress(fix.lat, fix.lon) else null
+    // "Avoid tolls" alternative, fetched once the map is enlarged.
+    LaunchedEffect(big, dest, route) {
+        val d = dest
+        val f = Drive.fix
+        if (big == 2 && d != null && f != null && route != null && alt == null && !altTried) {
+            altTried = true
+            val k = key
+            val r = withContext(Dispatchers.IO) { Routing.route(f.lat, f.lon, d.lat, d.lon, k, true) }
+            if (dest === d) alt = r.route
+        }
+    }
+    val rt = run {
+        val a = alt
+        if (useAlt && a != null) a else route
+    }
+    val prog = remember(fix, rt) {
+        if (rt != null && fix != null) rt.progress(fix.lat, fix.lon) else null
     }
     val remM = prog?.first
     val off = prog?.second
@@ -221,6 +279,19 @@ fun DriveScreen(onClose: () -> Unit) {
             dest = null
             route = null
         }
+    }
+    // Speed limit of the road you are on (OpenStreetMap), checked every 15 s while moving.
+    LaunchedEffect(now / 15_000L) {
+        val f = Drive.fix
+        if (f != null && f.speed > 2f) {
+            val l = withContext(Dispatchers.IO) { Routing.limit(f.lat, f.lon) }
+            if (l != null) { limit = l; limitAt = System.currentTimeMillis() } else if (System.currentTimeMillis() - limitAt > 60_000L) limit = null
+        }
+    }
+    // Incidents nearby (TomTom key), only while the map is enlarged.
+    LaunchedEffect(now / 60_000L, big, key) {
+        val f = Drive.fix
+        if (big == 2 && f != null && key.isNotEmpty()) incidents = withContext(Dispatchers.IO) { Routing.incidents(f.lat, f.lon, key) }
     }
 
     fun search() {
@@ -236,11 +307,18 @@ fun DriveScreen(onClose: () -> Unit) {
             }
         }
     }
+    val speak = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        val t = r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+        if (t != null) { query = t; search() }
+    }
 
-    val gW by animateFloatAsState(when (big) { 0 -> 1f; 1 -> 2.4f; else -> 0.5f }, tween(450), label = "gw")
-    val mW by animateFloatAsState(when (big) { 0 -> 1.3f; 1 -> 0.6f; else -> 2.6f }, tween(450), label = "mw")
-    val compactG = big == 2
-    val compactM = big == 1
+    val gW by animateFloatAsState(when (big) { 0 -> 360f; 1 -> 590f; else -> 160f }, tween(450), label = "gw")
+    val mW by animateFloatAsState(when (big) { 0 -> 424f; 1 -> 194f; else -> 624f }, tween(450), label = "mw")
+    val over = limit != null && kmh > (limit ?: 0) + 2
+
+    // Permissions that let the screen appear by itself.
+    val canFs = remember(now / 3000) { android.os.Build.VERSION.SDK_INT < 34 || ctx.getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent() }
+    val canOver = remember(now / 3000) { Settings.canDrawOverlays(ctx) }
 
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val view = LocalView.current
@@ -248,238 +326,297 @@ fun DriveScreen(onClose: () -> Unit) {
             view.keepScreenOn = true
             onDispose { view.keepScreenOn = false }
         }
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-                val pulse by rememberInfiniteTransition(label = "live").animateFloat(0.25f, 1f, infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "pa")
-                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(12.dp).clip(CircleShape).background(if (live) accent.copy(alpha = pulse) else sub.copy(alpha = 0.4f)))
-                    Spacer(Modifier.width(10.dp))
-                    Text(s(R.string.drive_title), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                    TextButton(onClick = { showSet = !showSet }) { Text(s(R.string.drive_settings)) }
-                    TextButton(onClick = onClose) { Text(s(R.string.close)) }
-                }
-                AnimatedVisibility(showSet) {
-                    Surface(Modifier.fillMaxWidth().padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(14.dp)) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(s(R.string.drive_auto), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                                Switch(checked = auto, onCheckedChange = { auto = it; Drive.setAuto(ctx, it) })
+        Box(Modifier.fillMaxSize().background(BG)) {
+            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // ---------------- speed panel ----------------
+                Column(
+                    Modifier.weight(gW).fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(CARD)
+                        .pointerInput(Unit) { detectTapGestures(onDoubleTap = { big = if (big == 1) 0 else 1 }) },
+                ) {
+                    val pulse by rememberInfiniteTransition(label = "live").animateFloat(0.3f, 1f, infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "pa")
+                    Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 14.dp).height(40.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(8.dp).clip(CircleShape).background(if (live) LIME.copy(alpha = pulse) else OFF))
+                        Spacer(Modifier.width(8.dp))
+                        Tx(s(R.string.drive_title), 16, GREY, modifier = Modifier.weight(1f), maxLines = 1)
+                        Tx(s(R.string.drive_settings), 16, INK, modifier = Modifier.clickable { showSet = !showSet }.padding(horizontal = 10.dp, vertical = 10.dp))
+                        Tx(s(R.string.close), 16, LIME, modifier = Modifier.clickable { onClose() }.padding(horizontal = 10.dp, vertical = 10.dp))
+                        if (limit != null) {
+                            Spacer(Modifier.width(6.dp))
+                            Box(Modifier.size(40.dp).clip(CircleShape).background(INK).border(3.dp, RED, CircleShape), contentAlignment = Alignment.Center) {
+                                Tx((limit ?: 0).toString(), 20, BG, cond = true)
                             }
-                            OutlinedTextField(
-                                value = key, onValueChange = { key = it; Drive.setKey(ctx, it) }, singleLine = true,
-                                label = { Text(s(R.string.drive_key)) }, modifier = Modifier.fillMaxWidth(),
-                            )
-                            Text(s(R.string.drive_key_hint), style = MaterialTheme.typography.bodyMedium, color = sub)
+                        }
+                    }
+                    if (big == 2) {
+                        // Map enlarged: a one-line speed strip.
+                        Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Tx(kmh.roundToInt().toString(), 84, if (over) RED else INK, cond = true)
+                                Spacer(Modifier.width(8.dp))
+                                Tx(s(R.string.kmh_unit), 16, GREY, modifier = Modifier.padding(bottom = 10.dp))
+                            }
+                            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(bottom = 6.dp)) {
+                                Tx(CARDS[(((nb + 22.5f) / 45f).toInt()) % 8], 40, INK, cond = true)
+                                Tx(String.format(Locale.US, "%03d°", nb.roundToInt() % 360), 16, GREY)
+                            }
+                        }
+                        ComposeCanvas(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp).height(24.dp)) {
+                            for (i in 0..36) {
+                                val h = if (i % 4 == 0) 24.dp.toPx() else 12.dp.toPx()
+                                val x = size.width * i / 36f
+                                drawLine(if (i * 5 <= kmh) LIME else OFF, Offset(x, size.height), Offset(x, size.height - h), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                            }
+                        }
+                    } else {
+                        // ---- tick-ring gauge ----
+                        val scale = if (kmh > 180f) 240 else 180
+                        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            val r = min(maxWidth.value / 2 - 30f, maxHeight.value / 2 - 4f).coerceAtLeast(40f)
+                            val paint = remember { Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.create("sans-serif-condensed", Typeface.NORMAL) } }
+                            ComposeCanvas(Modifier.fillMaxSize()) {
+                                val c = Offset(size.width / 2, size.height / 2)
+                                val rr = r.dp.toPx()
+                                paint.color = GREY.toArgb()
+                                paint.textSize = 20.sp.toPx()
+                                var v = 0
+                                while (v <= scale) {
+                                    val a = Math.toRadians(150.0 + v.toDouble() / scale * 240.0)
+                                    val len = (if (v % 20 == 0) 26 else if (v % 10 == 0) 18 else 10).dp.toPx()
+                                    val w = (if (v % 20 == 0) 3 else 2).dp.toPx()
+                                    val x0 = c.x + ((rr - len) * cos(a)).toFloat(); val y0 = c.y + ((rr - len) * sin(a)).toFloat()
+                                    val x1 = c.x + (rr * cos(a)).toFloat(); val y1 = c.y + (rr * sin(a)).toFloat()
+                                    drawLine(if (v <= kmh) LIME else OFF, Offset(x0, y0), Offset(x1, y1), strokeWidth = w, cap = StrokeCap.Round)
+                                    if (v % 20 == 0) {
+                                        val rl = rr - 46.dp.toPx()
+                                        drawContext.canvas.nativeCanvas.drawText(v.toString(), c.x + (rl * cos(a)).toFloat(), c.y + (rl * sin(a)).toFloat() + paint.textSize / 3, paint)
+                                    }
+                                    v += 5
+                                }
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Tx(kmh.roundToInt().toString(), (r * 0.74f).toInt(), if (over) RED else INK, cond = true)
+                                Tx(s(if (live) R.string.kmh_unit else R.string.drive_waiting), 16, GREY)
+                            }
+                        }
+                        // ---- heading and tape ----
+                        Row(Modifier.fillMaxWidth().height(34.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
+                            Tx(CARDS[(((nb + 22.5f) / 45f).toInt()) % 8], 32, INK, cond = true)
+                            Spacer(Modifier.width(10.dp))
+                            Tx(String.format(Locale.US, "%03d° ", nb.roundToInt() % 360) + s(R.string.drive_heading), 16, GREY, modifier = Modifier.padding(bottom = 4.dp))
+                        }
+                        val tapePaint = remember { Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT } }
+                        ComposeCanvas(Modifier.fillMaxWidth().padding(top = 6.dp).height(40.dp)) {
+                            val cx = size.width / 2
+                            tapePaint.color = GREY.toArgb()
+                            tapePaint.textSize = 16.sp.toPx()
+                            var d = (Math.floor(((hdgA - 50f) / 5f).toDouble()) * 5).toInt()
+                            while (d <= hdgA + 50f) {
+                                val n = ((d % 360) + 360) % 360
+                                val x = cx + (d - hdgA) * 4.dp.toPx()
+                                val nm = NAMES[n]
+                                val hgt = (if (nm != null) 14 else if (n % 15 == 0) 10 else 6).dp.toPx()
+                                drawLine(if (nm != null) INK else Color(0xFF5A6670), Offset(x, 12.dp.toPx()), Offset(x, 12.dp.toPx() + hgt), strokeWidth = 2.dp.toPx())
+                                if (nm != null) drawContext.canvas.nativeCanvas.drawText(nm, x, 12.dp.toPx() + hgt + 16.dp.toPx(), tapePaint)
+                                d += 5
+                            }
+                            val p = androidx.compose.ui.graphics.Path().apply {
+                                moveTo(cx - 6.dp.toPx(), 0f); lineTo(cx + 6.dp.toPx(), 0f); lineTo(cx, 9.dp.toPx()); close()
+                            }
+                            drawPath(p, LIME)
+                        }
+                        if (big == 1) {
+                            val avg = if (Drive.movingMs > 3000) (Drive.tripM / (Drive.movingMs / 1000.0) * 3.6).roundToInt() else 0
+                            Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Cell(s(R.string.drive_avg), ctx.getString(R.string.f_kmh, avg), 28)
+                                Cell(s(R.string.drive_top), ctx.getString(R.string.f_kmh, (Drive.maxMs * 3.6f).roundToInt()), 28)
+                                Cell(s(R.string.drive_trip), distanceText(ctx, Drive.tripM), 28)
+                            }
+                        } else {
+                            Spacer(Modifier.height(8.dp))
                         }
                     }
                 }
-                if (!granted) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(s(R.string.drive_no_perm), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                        Button(onClick = { ask.launch(Manifest.permission.ACCESS_FINE_LOCATION) }) { Text(s(R.string.allow_btn)) }
-                    }
-                }
-                GaugePanel(
-                    kmh, hdgA, card, nb.roundToInt(), live, compactG, fix, avgSp,
-                    Modifier.weight(gW).fillMaxWidth().pointerInput(Unit) { detectTapGestures(onDoubleTap = { big = if (big == 1) 0 else 1 }) },
-                )
-                Box(Modifier.weight(mW).fillMaxWidth()) {
+
+                // ---------------- map panel ----------------
+                Box(Modifier.weight(mW).fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MAPBG)) {
                     DriveMap(
-                        fix, route, dest, if (key.isNotEmpty() && traffic) key + "|" + (now / 180_000L) else "", dark, accent.toArgb(), follow, fit,
+                        fix, rt, dest, if (key.isNotEmpty() && traffic) key + "|" + (now / 180_000L) else "", follow, fit,
                         { follow = it },
                         { la, lo -> dest = Hit(String.format(Locale.US, "%.5f, %.5f", la, lo), la, lo); hits = emptyList() },
                         { big = if (big == 2) 0 else 2 },
                         Modifier.fillMaxSize(),
                     )
-                    Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        if (!compactM) {
-                            Surface(color = panel, shape = RoundedCornerShape(14.dp), shadowElevation = 4.dp) {
-                                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedTextField(
-                                            value = query, onValueChange = { query = it }, singleLine = true,
-                                            placeholder = { Text(s(R.string.drive_search)) }, modifier = Modifier.weight(1f),
-                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                            keyboardActions = KeyboardActions(onSearch = { search() }),
-                                        )
-                                        Button(onClick = { search() }) { Text(s(R.string.drive_go)) }
+                    Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(16.dp)).background(FIELD).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            ComposeCanvas(Modifier.size(22.dp)) {
+                                val u = size.minDimension / 24f
+                                drawCircle(GREY, 7 * u, Offset(11 * u, 11 * u), style = Stroke(2 * u, cap = StrokeCap.Round))
+                                drawLine(GREY, Offset(16 * u, 16 * u), Offset(20 * u, 20 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            BasicTextField(
+                                value = query, onValueChange = { query = it }, singleLine = true,
+                                textStyle = TextStyle(color = INK, fontSize = 16.sp, fontFamily = INTER),
+                                cursorBrush = SolidColor(LIME),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(onSearch = { search() }),
+                                modifier = Modifier.weight(1f).height(44.dp),
+                                decorationBox = { inner ->
+                                    Box(Modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
+                                        if (query.isEmpty()) Tx(s(R.string.drive_search), 16, GREY)
+                                        inner()
                                     }
-                                    dest?.let { d ->
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(d.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, maxLines = 1)
-                                            TextButton(onClick = { dest = null; route = null }) { Text(s(R.string.drive_clear)) }
-                                        }
+                                },
+                            )
+                            Box(
+                                Modifier.size(44.dp).clip(CircleShape).clickable {
+                                    try {
+                                        speak.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM))
+                                    } catch (e: Exception) {
+                                        Toast.makeText(ctx, ctx.getString(R.string.drive_novoice), Toast.LENGTH_SHORT).show()
                                     }
-                                    hits.forEach { h ->
-                                        Text(
-                                            h.name,
-                                            Modifier.fillMaxWidth().clickable { dest = h; hits = emptyList(); query = ""; follow = false }.padding(vertical = 8.dp),
-                                            style = MaterialTheme.typography.bodyLarge, maxLines = 2,
-                                        )
-                                    }
-                                    if (status.isNotEmpty()) Text(status, style = MaterialTheme.typography.bodyMedium, color = accent)
+                                },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                ComposeCanvas(Modifier.size(22.dp)) {
+                                    val u = size.minDimension / 24f
+                                    drawRoundRect(INK, Offset(9 * u, 3 * u), Size(6 * u, 12 * u), CornerRadius(3 * u), style = Stroke(2 * u))
+                                    drawArc(INK, 0f, 180f, false, Offset(5 * u, 4 * u), Size(14 * u, 14 * u), style = Stroke(2 * u, cap = StrokeCap.Round))
+                                    drawLine(INK, Offset(12 * u, 18 * u), Offset(12 * u, 21 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
                                 }
                             }
                         }
+                        if (hits.isNotEmpty()) {
+                            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(FIELD).padding(horizontal = 14.dp)) {
+                                hits.forEach { h ->
+                                    Tx(h.name, 16, INK, modifier = Modifier.fillMaxWidth().clickable { dest = h; hits = emptyList(); query = ""; follow = false }.padding(vertical = 12.dp), maxLines = 2)
+                                }
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (big != 1) {
+                                Row(
+                                    Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(FIELD)
+                                        .clickable { if (key.isEmpty()) showSet = true else traffic = !traffic }.padding(horizontal = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Box(Modifier.size(8.dp).clip(CircleShape).background(if (key.isNotEmpty() && traffic) RED else OFF))
+                                    Spacer(Modifier.width(8.dp))
+                                    Tx(s(if (key.isNotEmpty() && traffic) R.string.drive_live else R.string.drive_nolive), 16, INK)
+                                }
+                            }
+                            dest?.let { d ->
+                                Row(
+                                    Modifier.height(36.dp).weight(1f, fill = false).clip(RoundedCornerShape(18.dp)).background(FIELD).padding(start = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Tx(d.name, 16, INK, modifier = Modifier.weight(1f, fill = false), maxLines = 1)
+                                    Tx(s(R.string.drive_clear), 16, LIME, modifier = Modifier.clickable { dest = null; route = null }.padding(horizontal = 12.dp, vertical = 8.dp))
+                                }
+                            }
+                        }
+                        if (status.isNotEmpty()) Tx(status, 16, AMBER)
                     }
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                            if (!compactM) {
-                                FilterChip(
-                                    selected = key.isNotEmpty() && traffic,
-                                    onClick = { if (key.isEmpty()) showSet = true else traffic = !traffic },
-                                    label = { Text(s(R.string.drive_traffic)) },
-                                )
+                        if (!follow) {
+                            Box(Modifier.align(Alignment.End).height(40.dp).clip(RoundedCornerShape(20.dp)).background(LIME).clickable { follow = true }.padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+                                Tx(s(R.string.drive_recenter), 16, BG)
                             }
-                            if (!follow) Button(onClick = { follow = true }) { Text(s(R.string.drive_recenter)) }
                         }
-                        val r = route
-                        if (r != null && remM != null) {
-                            val base = if (r.metres > 0) r.secs / r.metres else 0.0
+                        if (rt != null && remM != null) {
+                            val base = if (rt.metres > 0) rt.secs / rt.metres else 0.0
                             var remS = remM * base
                             if (avgSp > 4f) remS = 0.5 * remS + 0.5 * (remM / avgSp)
                             val etaMs = now + (remS * 1000).toLong()
                             val mins = (remS / 60).roundToInt()
-                            val free = (r.secs - r.delay).coerceAtLeast(1.0)
-                            val ratio = r.delay / free
-                            val level = if (!r.live) s(R.string.drive_nolive) else if (ratio < 0.05) s(R.string.drive_t_clear) else if (ratio < 0.2) s(R.string.drive_t_mod) else s(R.string.drive_t_heavy)
-                            Surface(color = panel, shape = RoundedCornerShape(14.dp), shadowElevation = 4.dp) {
-                                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Cell(s(R.string.drive_eta), java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(Date(etaMs)), ink, true)
-                                        Cell(s(R.string.drive_left), if (mins < 60) ctx.getString(R.string.drive_min, mins) else ctx.getString(R.string.dur_hm, mins / 60, mins % 60), ink, true)
-                                        Cell(s(R.string.distance), distanceText(ctx, remM), ink, true)
+                            val free = (rt.secs - rt.delay).coerceAtLeast(1.0)
+                            val ratio = rt.delay / free
+                            val dm = (rt.delay / 60).roundToInt()
+                            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CARD).border(1.dp, LINE, RoundedCornerShape(18.dp)).padding(14.dp)) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                                    Cell(s(R.string.drive_eta), java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(Date(etaMs)))
+                                    Cell(s(R.string.drive_left), if (mins < 60) ctx.getString(R.string.drive_min, mins) else ctx.getString(R.string.dur_hm, mins / 60, mins % 60), align = Alignment.CenterHorizontally)
+                                    Cell(s(R.string.distance), distanceText(ctx, remM), align = Alignment.End)
+                                }
+                                if (big != 1) {
+                                    Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        val heavy = rt.live && ratio >= 0.2
+                                        val mod = rt.live && ratio in 0.05..0.2
+                                        Box(Modifier.size(10.dp).clip(CircleShape).background(if (heavy) RED else if (mod) AMBER else if (rt.live) LIME else OFF))
+                                        Spacer(Modifier.width(8.dp))
+                                        Tx(
+                                            if (!rt.live) s(R.string.drive_nolive) else if (heavy) ctx.getString(R.string.drive_heavy_adds, dm) else if (mod) ctx.getString(R.string.drive_mod_adds, dm) else s(R.string.drive_clear_ahead),
+                                            16, INK,
+                                        )
                                     }
-                                    if (!compactM) {
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Cell(s(R.string.drive_traffic), level, if (r.live && ratio >= 0.2) accent else ink, false)
-                                            if (r.live) Cell(s(R.string.drive_delay), ctx.getString(R.string.drive_min, (r.delay / 60).roundToInt()), ink, false)
+                                }
+                                if (big == 2) {
+                                    Column(Modifier.padding(top = 12.dp).fillMaxWidth().border(0.dp, Color.Transparent), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Box(Modifier.fillMaxWidth().height(1.dp).background(LINE))
+                                        incidents.forEach { inc ->
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Box(Modifier.size(10.dp).clip(CircleShape).background(AMBER))
+                                                Spacer(Modifier.width(8.dp))
+                                                val dd = if (fix != null) distanceText(ctx, metresBetween(fix.lat, fix.lon, inc.lat, inc.lon)) else ""
+                                                Tx(ctx.getString(R.string.drive_incident_away, inc.text, dd), 16, INK, maxLines = 1)
+                                            }
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            val a2 = alt
+                                            Box(
+                                                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(12.dp)).background(if (!useAlt) LIME else Color(0xFF262D33)).clickable { useAlt = false },
+                                                contentAlignment = Alignment.Center,
+                                            ) { Tx(ctx.getString(R.string.drive_fastest, ((route?.secs ?: 0.0) / 60).roundToInt()), 16, if (!useAlt) BG else INK, maxLines = 1) }
+                                            Box(
+                                                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(12.dp)).background(if (useAlt) LIME else Color(0xFF262D33)).clickable { if (a2 != null) useAlt = true },
+                                                contentAlignment = Alignment.Center,
+                                            ) { Tx(if (a2 != null) ctx.getString(R.string.drive_avoid, (a2.secs / 60).roundToInt()) else s(R.string.drive_avoid_none), 16, if (useAlt) BG else INK, maxLines = 1) }
                                         }
                                     }
                                 }
                             }
-                        } else if (dest != null && !compactM) {
-                            Surface(color = panel, shape = RoundedCornerShape(14.dp)) {
-                                Text(s(if (busy) R.string.drive_routing else R.string.drive_waiting), Modifier.padding(12.dp), style = MaterialTheme.typography.bodyLarge)
-                            }
+                        } else if (dest != null) {
+                            Box(Modifier.clip(RoundedCornerShape(14.dp)).background(CARD).padding(12.dp)) { Tx(s(if (busy) R.string.drive_routing else R.string.drive_waiting), 16, INK) }
+                        } else if (big != 1) {
+                            Box(Modifier.clip(RoundedCornerShape(14.dp)).background(CARD).padding(12.dp)) { Tx(s(R.string.drive_hint), 16, GREY) }
                         }
                     }
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun Cell(label: String, value: String, color: Color, strong: Boolean) {
-    Column {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = if (strong) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium, color = color)
-    }
-}
-
-@Composable
-private fun GaugePanel(kmh: Float, hdg: Float, card: String, deg: Int, live: Boolean, compact: Boolean, fix: Drive.Fix?, avgSp: Float, modifier: Modifier) {
-    val ctx = LocalContext.current
-    val accent = MaterialTheme.colorScheme.primary
-    val track = MaterialTheme.colorScheme.surfaceVariant
-    val ink = MaterialTheme.colorScheme.onBackground
-    val sub = MaterialTheme.colorScheme.onSurfaceVariant
-    val tripA by animateFloatAsState(Drive.tripM.toFloat(), tween(800), label = "trip")
-    val maxA by animateFloatAsState(Drive.maxMs * 3.6f, tween(800), label = "max")
-    val avg = if (Drive.movingMs > 3000) (Drive.tripM / (Drive.movingMs / 1000.0) * 3.6).toFloat() else 0f
-    val avgA by animateFloatAsState(avg, tween(800), label = "avg")
-    val tick = remember { Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD } }
-
-    if (compact) {
-        Row(modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Text(kmh.roundToInt().toString(), fontSize = 56.sp, fontWeight = FontWeight.Bold, color = ink)
-            Spacer(Modifier.width(8.dp))
-            Text(s(R.string.kmh_unit), style = MaterialTheme.typography.titleMedium, color = sub)
-            Spacer(Modifier.width(24.dp))
-            Dial(hdg, 56, accent, ink, tick)
-            Spacer(Modifier.width(10.dp))
-            Text(card, style = MaterialTheme.typography.headlineSmall, color = accent, fontWeight = FontWeight.Bold)
-        }
-        return
-    }
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            val side = min(maxWidth.value, maxHeight.value).dp
-            val maxScale = if (kmh > 190f) 300f else 200f
-            val labelStep = if (maxScale > 200f) 60 else 40
-            ComposeCanvas(Modifier.size(side)) {
-                val stroke = size.minDimension * 0.065f
-                val r = size.minDimension / 2 - stroke
-                val c = Offset(size.width / 2, size.height / 2)
-                val frac = (kmh / maxScale).coerceIn(0f, 1f)
-                val tl = Offset(c.x - r, c.y - r)
-                val sz = Size(r * 2, r * 2)
-                drawArc(track, 150f, 240f, false, tl, sz, style = Stroke(stroke, cap = StrokeCap.Round))
-                drawArc(accent, 150f, 240f * frac, false, tl, sz, style = Stroke(stroke, cap = StrokeCap.Round))
-                tick.color = sub.toArgb()
-                tick.textSize = 16.sp.toPx()
-                val steps = (maxScale / 10).toInt()
-                for (i in 0..steps) {
-                    val a = Math.toRadians((150 + 240.0 * i / steps))
-                    val major = i * 10 % labelStep == 0
-                    val r1 = r - stroke * (if (major) 1.9f else 1.5f)
-                    val r2 = r - stroke * 1.1f
-                    drawLine(if (major) ink else sub.copy(alpha = 0.5f), Offset(c.x + (r1 * Math.cos(a)).toFloat(), c.y + (r1 * Math.sin(a)).toFloat()), Offset(c.x + (r2 * Math.cos(a)).toFloat(), c.y + (r2 * Math.sin(a)).toFloat()), strokeWidth = if (major) 3f else 1.5f)
-                    if (major) {
-                        val rl = r - stroke * 3.1f
-                        drawContext.canvas.nativeCanvas.drawText((i * 10).toString(), c.x + (rl * Math.cos(a)).toFloat(), c.y + (rl * Math.sin(a)).toFloat() + tick.textSize / 3, tick)
+            // ---------------- settings ----------------
+            AnimatedVisibility(showSet, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 64.dp, start = 18.dp, end = 18.dp)) {
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(FIELD).border(1.dp, LINE, RoundedCornerShape(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (!granted) {
+                        Tx(s(R.string.drive_no_perm), 16, AMBER)
+                        Box(Modifier.clip(RoundedCornerShape(12.dp)).background(LIME).clickable { ask.launch(Manifest.permission.ACCESS_FINE_LOCATION) }.padding(horizontal = 16.dp, vertical = 10.dp)) { Tx(s(R.string.allow_btn), 16, BG) }
                     }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Tx(s(R.string.drive_auto), 16, INK, modifier = Modifier.weight(1f))
+                        Switch(checked = auto, onCheckedChange = { auto = it; Drive.setAuto(ctx, it) })
+                    }
+                    if (!canFs) {
+                        Row(Modifier.clickable {
+                            if (android.os.Build.VERSION.SDK_INT >= 34) ctx.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }, verticalAlignment = Alignment.CenterVertically) {
+                            Tx(s(R.string.drive_lock_perm), 16, LIME, modifier = Modifier.weight(1f).padding(vertical = 6.dp))
+                        }
+                    }
+                    if (!canOver) {
+                        Tx(
+                            s(R.string.drive_overlay), 16, LIME,
+                            modifier = Modifier.fillMaxWidth().clickable { ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.padding(vertical = 6.dp),
+                        )
+                    }
+                    OutlinedTextField(
+                        value = key, onValueChange = { key = it; Drive.setKey(ctx, it) }, singleLine = true,
+                        label = { Text(s(R.string.drive_key)) }, modifier = Modifier.fillMaxWidth(),
+                    )
+                    Tx(s(R.string.drive_key_hint), 16, GREY)
+                    Tx(s(R.string.drive_reset), 16, LIME, modifier = Modifier.clickable { Drive.resetTrip() }.padding(vertical = 6.dp))
                 }
-                val na = Math.toRadians(150 + 240.0 * frac)
-                drawLine(ink, c, Offset(c.x + (r * 0.74f * Math.cos(na)).toFloat(), c.y + (r * 0.74f * Math.sin(na)).toFloat()), strokeWidth = 4f, cap = StrokeCap.Round)
-                drawCircle(accent, stroke * 0.55f, c)
-                drawCircle(Color.White, stroke * 0.2f, c)
-            }
-            Column(Modifier.padding(top = side * 0.22f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(kmh.roundToInt().toString(), fontSize = (side.value * 0.27f).sp, fontWeight = FontWeight.Bold, color = ink, textAlign = TextAlign.Center)
-                Text(s(if (live) R.string.kmh_unit else R.string.drive_waiting), style = MaterialTheme.typography.titleMedium, color = sub)
-            }
-            Row(Modifier.align(Alignment.BottomCenter).padding(bottom = side * 0.04f), verticalAlignment = Alignment.CenterVertically) {
-                Dial(hdg, 52, accent, ink, tick)
-                Spacer(Modifier.width(10.dp))
-                Text("$card  $deg°", style = MaterialTheme.typography.headlineSmall, color = accent, fontWeight = FontWeight.Bold)
             }
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Cell(s(R.string.drive_trip), distanceText(ctx, tripA.toDouble()), ink, false)
-            Cell(s(R.string.drive_max), ctx.getString(R.string.f_kmh, maxA.roundToInt()), ink, false)
-            Cell(s(R.string.drive_avg), ctx.getString(R.string.f_kmh, avgA.roundToInt()), ink, false)
-            Cell(s(R.string.drive_time), clockText(Drive.movingMs), ink, false)
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            Cell(s(R.string.drive_alt), ctx.getString(R.string.f_m, (fix?.alt ?: 0.0).roundToInt()), ink, false)
-            Spacer(Modifier.width(24.dp))
-            Cell(s(R.string.drive_acc), ctx.getString(R.string.f_m, (fix?.acc ?: 0f).roundToInt()), ink, false)
-            Spacer(Modifier.weight(1f))
-            OutlinedButton(onClick = { Drive.resetTrip() }) { Text(s(R.string.drive_reset)) }
-        }
-    }
-}
-
-/** Compass dial: the letters turn so the direction you face is always at the top. */
-@Composable
-private fun Dial(hdg: Float, sizeDp: Int, accent: Color, ink: Color, paint: Paint) {
-    ComposeCanvas(Modifier.size(sizeDp.dp)) {
-        val r = size.minDimension / 2
-        val c = Offset(r, r)
-        drawCircle(ink.copy(alpha = 0.35f), r - 2f, c, style = Stroke(3f))
-        paint.textSize = r * 0.5f
-        listOf("N" to 0f, "E" to 90f, "S" to 180f, "W" to 270f).forEach { (t, a) ->
-            rotate(a - hdg, c) {
-                paint.color = (if (t == "N") accent else ink).toArgb()
-                drawContext.canvas.nativeCanvas.drawText(t, c.x, c.y - r * 0.55f + paint.textSize / 3, paint)
-            }
-        }
-        val p = androidx.compose.ui.graphics.Path().apply {
-            moveTo(c.x, 0f); lineTo(c.x - r * 0.14f, r * 0.2f); lineTo(c.x + r * 0.14f, r * 0.2f); close()
-        }
-        drawPath(p, accent)
     }
 }
 
@@ -493,7 +630,7 @@ private class TomTomFlow(val key: String, name: String) : OnlineTileSourceBase(n
 /** Map below the speedometer: follows the car, long-press sets a destination, double-tap enlarges it. */
 @Composable
 private fun DriveMap(
-    fix: Drive.Fix?, route: Route?, dest: Hit?, trafficKey: String, dark: Boolean, accent: Int, follow: Boolean, fit: Int,
+    fix: Drive.Fix?, route: Route?, dest: Hit?, trafficKey: String, follow: Boolean, fit: Int,
     onFollow: (Boolean) -> Unit, onPick: (Double, Double) -> Unit, onDouble: () -> Unit, modifier: Modifier,
 ) {
     val ctx = LocalContext.current
@@ -501,7 +638,9 @@ private fun DriveMap(
     val dbl by rememberUpdatedState(onDouble)
     val fol by rememberUpdatedState(onFollow)
     val folNow by rememberUpdatedState(follow)
-    val car = remember { CarOverlay(ctx.resources.displayMetrics.density, accent) }
+    val accent = LIME.toArgb()
+    val dark = true
+    val car = remember { CarOverlay(ctx.resources.displayMetrics.density) }
     val holder = remember { Holder() }
     val map = remember {
         Configuration.getInstance().apply {
@@ -598,8 +737,8 @@ private fun DriveMap(
             val pts = route.lat.indices.map { GeoPoint(route.lat[it], route.lon[it]) }
             m.overlays.add(Polyline().apply {
                 setPoints(pts)
-                outlinePaint.color = 0xCCFFFFFF.toInt()
-                outlinePaint.strokeWidth = 20f
+                outlinePaint.color = 0xCC0D1013.toInt()
+                outlinePaint.strokeWidth = 22f
                 outlinePaint.strokeCap = Paint.Cap.ROUND
             })
             m.overlays.add(Polyline().apply {
@@ -609,20 +748,20 @@ private fun DriveMap(
                 outlinePaint.strokeCap = Paint.Cap.ROUND
             })
         }
-        if (dest != null) m.overlays.add(PinOverlay(GeoPoint(dest.lat, dest.lon), m.resources.displayMetrics.density, accent))
+        if (dest != null) m.overlays.add(PinOverlay(GeoPoint(dest.lat, dest.lon), m.resources.displayMetrics.density))
         m.overlays.add(car)
         m.invalidate()
     }
 }
 
-private class CarOverlay(val density: Float, val color: Int) : Overlay() {
+private class CarOverlay(val density: Float) : Overlay() {
     var lat = 0.0
     var lon = 0.0
     var bearing = 0f
     var show = false
-    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = (this@CarOverlay.color and 0x00FFFFFF) or 0x33000000 }
-    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = 0xFFFFFFFF.toInt() }
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = this@CarOverlay.color }
+    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33C8F031 }
+    private val dark = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0D1013.toInt() }
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC8F031.toInt() }
 
     override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {
         if (shadow || !show) return
@@ -630,27 +769,27 @@ private class CarOverlay(val density: Float, val color: Int) : Overlay() {
         osmv.projection.toPixels(GeoPoint(lat, lon), pt)
         c.save()
         c.translate(pt.x.toFloat(), pt.y.toFloat())
-        c.drawCircle(0f, 0f, 26f * density, halo)
+        c.drawCircle(0f, 0f, 30f * density, halo)
+        c.drawCircle(0f, 0f, 18f * density, dark)
+        c.drawCircle(0f, 0f, 14f * density, fill)
         c.rotate(bearing - osmv.mapOrientation)
         val arrow = Path().apply {
-            moveTo(0f, -15f * density); lineTo(11f * density, 12f * density); lineTo(0f, 6f * density); lineTo(-11f * density, 12f * density); close()
+            moveTo(0f, -9f * density); lineTo(8f * density, 8f * density); lineTo(0f, 4f * density); lineTo(-8f * density, 8f * density); close()
         }
-        c.drawPath(arrow, ring.apply { style = Paint.Style.STROKE; strokeWidth = 4f * density; strokeJoin = Paint.Join.ROUND })
-        c.drawPath(arrow, fill)
+        c.drawPath(arrow, dark)
         c.restore()
     }
 }
 
-private class PinOverlay(val p: GeoPoint, val density: Float, val color: Int) : Overlay() {
-    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = 0xFFFFFFFF.toInt() }
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = this@PinOverlay.color }
+private class PinOverlay(val p: GeoPoint, val density: Float) : Overlay() {
+    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFEEF1F3.toInt() }
+    private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0D1013.toInt() }
 
     override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {
         if (shadow) return
         val pt = Point()
         osmv.projection.toPixels(p, pt)
-        c.drawCircle(pt.x.toFloat(), pt.y.toFloat(), 13f * density, ring)
-        c.drawCircle(pt.x.toFloat(), pt.y.toFloat(), 9f * density, fill)
-        c.drawCircle(pt.x.toFloat(), pt.y.toFloat(), 3.5f * density, ring)
+        c.drawCircle(pt.x.toFloat(), pt.y.toFloat(), 14f * density, ring)
+        c.drawCircle(pt.x.toFloat(), pt.y.toFloat(), 6f * density, dot)
     }
 }

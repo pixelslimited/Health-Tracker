@@ -288,7 +288,7 @@
     <string name="timer_start">ابدأ</string>
     <string name="timer_pause">إيقاف مؤقت</string>
     <string name="timer_reset">إعادة</string>
-    <string name="drive_title">القيادة</string>
+    <string name="drive_title">وضع القيادة</string>
     <string name="drive_open">شاشة القيادة</string>
     <string name="drive_settings">الإعدادات</string>
     <string name="drive_auto">فتح تلقائيا عند القيادة</string>
@@ -326,4 +326,18 @@
     <string name="kmh_unit">كم/س</string>
     <string name="drive_min">%d د</string>
     <string name="f_kmh">%d كم/س</string>
+    <string name="drive_top">الأعلى</string>
+    <string name="drive_heading">الاتجاه</string>
+    <string name="drive_live">حركة المرور الحية</string>
+    <string name="drive_novoice">البحث الصوتي غير متاح</string>
+    <string name="drive_hint">ابحث، أو اضغط مطولا على الخريطة، لتحديد الوجهة</string>
+    <string name="drive_heavy_adds">ازدحام شديد، يضيف %d د</string>
+    <string name="drive_mod_adds">ازدحام متوسط، يضيف %d د</string>
+    <string name="drive_clear_ahead">الطريق سالك</string>
+    <string name="drive_incident_away">%1$s، على بعد %2$s</string>
+    <string name="drive_fastest">الأسرع %d د</string>
+    <string name="drive_avoid">تجنب الرسوم %d د</string>
+    <string name="drive_avoid_none">تجنب الرسوم</string>
+    <string name="drive_lock_perm">السماح على شاشة القفل</string>
+    <string name="drive_overlay">السماح بالعرض فوق التطبيقات الأخرى (يفتح الشاشة فورا)</string>
 </resources>

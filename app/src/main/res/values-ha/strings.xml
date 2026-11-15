@@ -288,7 +288,7 @@
     <string name="timer_start">Fara</string>
     <string name="timer_pause">Dakata</string>
     <string name="timer_reset">Sake farawa</string>
-    <string name="drive_title">Tuki</string>
+    <string name="drive_title">Yanayin tuki</string>
     <string name="drive_open">Allon tuki</string>
     <string name="drive_settings">Saituna</string>
     <string name="drive_auto">Buɗe kai tsaye idan ana tuki</string>
@@ -326,4 +326,18 @@
     <string name="kmh_unit">km/h</string>
     <string name="drive_min">%d min</string>
     <string name="f_kmh">%d km/h</string>
+    <string name="drive_top">Mafi sauri</string>
+    <string name="drive_heading">alkibla</string>
+    <string name="drive_live">Cunkoso kai tsaye</string>
+    <string name="drive_novoice">Binciken murya babu shi</string>
+    <string name="drive_hint">Bincika, ko ka dade ka danna taswira, don saita wurin zuwa</string>
+    <string name="drive_heavy_adds">Cunkoso mai yawa, yana ƙara min %d</string>
+    <string name="drive_mod_adds">Cunkoso matsakaici, yana ƙara min %d</string>
+    <string name="drive_clear_ahead">Hanya a buɗe</string>
+    <string name="drive_incident_away">%1$s, nisan %2$s</string>
+    <string name="drive_fastest">Mafi sauri min %d</string>
+    <string name="drive_avoid">Guje wa kuɗin hanya min %d</string>
+    <string name="drive_avoid_none">Guje wa kuɗin hanya</string>
+    <string name="drive_lock_perm">Ba da izini a kan allon kulle</string>
+    <string name="drive_overlay">Ba da izinin nuna kan wasu manhajoji (yana buɗe allon nan take)</string>
 </resources>
