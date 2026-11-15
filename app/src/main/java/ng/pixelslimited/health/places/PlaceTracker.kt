@@ -169,6 +169,7 @@ object PlaceTracker : LocationListener {
 
     override fun onLocationChanged(l: Location) {
         val c = app ?: return
+        ng.pixelslimited.health.drive.Drive.feed(c, l)
         if (l.hasAccuracy() && l.accuracy > BEST) return
         handle(c, l)
     }
@@ -196,7 +197,7 @@ object PlaceTracker : LocationListener {
             route(lat, lon, now)
         } else {
             val d = metresBetween(s.pLat, s.pLon, lat, lon)
-            adapt(now, d >= STEP * 2)
+            adapt(now, d >= STEP * 2 || (l.hasSpeed() && l.speed >= 3f))
             if (d >= STEP) {
                 s.dm += d
                 s.leg += d

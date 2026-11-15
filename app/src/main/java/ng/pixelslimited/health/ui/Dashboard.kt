@@ -178,6 +178,7 @@ fun Move(me: Profile, save: (Entry) -> Unit) {
     var training by remember { mutableStateOf(false) }
     val today = LocalDate.now()
     val week = weekSteps(me, today)
+    androidx.compose.material3.Button(onClick = { ng.pixelslimited.health.drive.Drive.openManual() }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.drive_open)) }
     WorkoutBlock(me, me.since(T.WORK, dayStart(today)).sumOf { it.a }.toInt(), { training = true }, cat) { cat = it }
     if (training) WorkoutDialog(cat, Workouts.plan(cat, me.fitLevel, Workouts.programDay(me.fitStart), Workouts.adjust(me)), { training = false }) { it.forEach(save); training = false }
     PlacesBlock(me)

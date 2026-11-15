@@ -27,11 +27,13 @@ class App : Application() {
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
             }
         )
+        nm.createNotificationChannel(NotificationChannel(CH_DRIVE, getString(R.string.ch_drive), NotificationManager.IMPORTANCE_HIGH))
         ng.pixelslimited.health.steps.StepJob.schedule(this)
     }
 
     companion object {
         const val CH_STEPS = "steps"
         const val CH_REMIND = "reminders_alert"
+        const val CH_DRIVE = "drive"
     }
 }

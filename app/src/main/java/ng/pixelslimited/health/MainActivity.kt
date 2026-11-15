@@ -40,8 +40,15 @@ class MainActivity : FragmentActivity() {
         ng.pixelslimited.health.sleep.SleepDetector.detect(applicationContext)
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("drive", false)) ng.pixelslimited.health.drive.Drive.openManual()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent?.getBooleanExtra("drive", false) == true) ng.pixelslimited.health.drive.Drive.openManual()
         Store.init(applicationContext)
         Reminders.scheduleAll(this)
         locked = Store.data.value.lock
@@ -65,11 +72,13 @@ class MainActivity : FragmentActivity() {
 
     override fun onStart() {
         super.onStart()
+        ng.pixelslimited.health.drive.Drive.visible = true
         if (locked && !authBusy) unlock()
     }
 
     override fun onStop() {
         super.onStop()
+        ng.pixelslimited.health.drive.Drive.visible = false
         Store.flush()
         if (Store.data.value.lock && !authBusy) locked = true
     }

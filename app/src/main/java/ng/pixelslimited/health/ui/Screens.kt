@@ -128,6 +128,7 @@ fun AppRoot() {
         }
     }
     BackHandler(settings || reports) { settings = false; reports = false }
+    if (ng.pixelslimited.health.drive.Drive.open) DriveScreen { ng.pixelslimited.health.drive.Drive.dismiss() }
     val save: (Entry) -> Unit = { e ->
         Store.edit { it.copy(entries = it.entries + e) }
         if (level(e) == Level.DANGER) alert = e
