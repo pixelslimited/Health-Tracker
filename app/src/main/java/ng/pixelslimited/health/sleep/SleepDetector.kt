@@ -21,7 +21,12 @@ object SleepDetector {
         p.edit().putString("events", (list + "${System.currentTimeMillis()}:${if (on) 1 else 0}").joinToString(",")).apply()
     }
 
+    /** Whether sleep is worked out from screen use; the buttons and manual entry work either way. */
+    fun auto(ctx: Context) = ctx.getSharedPreferences("screen", Context.MODE_PRIVATE).getBoolean("auto", true)
+    fun setAuto(ctx: Context, on: Boolean) = ctx.getSharedPreferences("screen", Context.MODE_PRIVATE).edit().putBoolean("auto", on).apply()
+
     fun detect(ctx: Context) {
+        if (!auto(ctx)) return
         val events = ctx.getSharedPreferences("screen", Context.MODE_PRIVATE).getString("events", "")!!
             .split(",").filter { it.contains(':') }
             .map { it.substringBefore(':').toLong() to (it.substringAfter(':') == "1") }

@@ -25,6 +25,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -107,10 +116,11 @@ fun rememberPlaceToday(me: Profile): Triple<Int, Double, Long> {
     return Triple(n, maxOf(routeM, live), PlaceTracker.hereSince(ctx))
 }
 
+/** Activity > Places: the day's map, stops and distance on the page; the full-screen map is one tap away. */
 @Composable
-fun PlacesBlock(me: Profile) {
+fun PlacesPage(me: Profile) {
     val ctx = LocalContext.current
-    var open by remember { mutableStateOf(false) }
+    var full by remember { mutableStateOf(false) }
     var on by remember { mutableStateOf(PlaceTracker.canRun(ctx)) }
     val bgAsk = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -121,26 +131,32 @@ fun PlacesBlock(me: Profile) {
             if (Build.VERSION.SDK_INT >= 29 && !PlaceTracker.hasBackground(ctx)) bgAsk.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
     }
-    val (stopCount, metres, here) = rememberPlaceToday(me)
-    Section(s(R.string.places)) {
-        if (!on) {
-            Text(s(R.string.places_desc))
-            Button(onClick = { ask.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }) { Text(s(R.string.enable)) }
-        } else {
-            Stat(s(R.string.today), ctx.getString(R.string.n_stops, stopCount))
-            Stat(s(R.string.distance), distanceText(ctx, metres))
-            if (here > 0) Text(ctx.getString(R.string.places_here, timeText(here)), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        OutlinedButton(onClick = { open = true }) { Text(s(R.string.places_open)) }
+    val here = rememberPlaceToday(me).third
+    if (!on) Block {
+        Text(s(R.string.places_desc))
+        Button(onClick = { ask.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }) { Text(s(R.string.enable)) }
+    } else if (here > 0) {
+        Text(ctx.getString(R.string.places_here, timeText(here)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    if (open) PlacesDialog(me) { open = false }
+    PlacesView(me, true, {}, { full = true })
+    if (full) PlacesView(me, false, { full = false })
+}
+
+@Composable
+private fun MapButton(desc: String, onClick: () -> Unit, glyph: DrawScope.(Color) -> Unit) {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Surface(Modifier.clickable(onClick = onClick).semantics { contentDescription = desc }, color = MaterialTheme.colorScheme.background, shape = RoundedCornerShape(2.dp), shadowElevation = 4.dp) {
+        Box(Modifier.padding(12.dp), contentAlignment = Alignment.Center) {
+            androidx.compose.foundation.Canvas(Modifier.size(24.dp)) { glyph(ink) }
+        }
+    }
 }
 
 private class DayRow(val date: LocalDate, val stops: Int, val metres: Double)
 private class Top(val name: String, val lat: Double, val lon: Double, var visits: Int = 0, var ms: Long = 0)
 
 @Composable
-fun PlacesDialog(me: Profile, onClose: () -> Unit) {
+fun PlacesView(me: Profile, inline: Boolean, onClose: () -> Unit, onFull: () -> Unit = {}) {
     val ctx = LocalContext.current
     val today = LocalDate.now()
     var mode by remember { mutableStateOf(0) }
@@ -215,7 +231,97 @@ fun PlacesDialog(me: Profile, onClose: () -> Unit) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     var listOpen by remember { mutableStateOf(false) }
     val panel = MaterialTheme.colorScheme.background.copy(alpha = 0.94f)
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    if (inline) {
+        val muted = MaterialTheme.colorScheme.onSurfaceVariant
+        Seg(listOf(s(R.string.pl_day), s(R.string.pl_week), s(R.string.pl_month), s(R.string.pl_year), s(R.string.pl_range)), mode) { mode = it; startOnMe = false }
+        if (mode == 4) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { pick(rFrom) { rFrom = it; if (rTo.isBefore(it)) rTo = it } }, modifier = Modifier.weight(1f)) { Text(rFrom.format(med), maxLines = 1) }
+                OutlinedButton(onClick = { pick(rTo) { rTo = it; if (rFrom.isAfter(it)) rFrom = it } }, modifier = Modifier.weight(1f)) { Text(rTo.format(med), maxLines = 1) }
+            }
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                MapButton(s(R.string.day_prev), { shift(-1) }) { c ->
+                    drawLine(c, Offset(size.width * 0.65f, size.height * 0.15f), Offset(size.width * 0.3f, size.height / 2), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                    drawLine(c, Offset(size.width * 0.3f, size.height / 2), Offset(size.width * 0.65f, size.height * 0.85f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                }
+                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                MapButton(s(R.string.day_next), { if (to.isBefore(today)) shift(1) }) { c ->
+                    drawLine(c, Offset(size.width * 0.35f, size.height * 0.15f), Offset(size.width * 0.7f, size.height / 2), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                    drawLine(c, Offset(size.width * 0.7f, size.height / 2), Offset(size.width * 0.35f, size.height * 0.85f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(260.dp)) {
+            RouteMap(
+                lines, stops, names, dark, MaterialTheme.colorScheme.primary.toArgb(), "$from/$to/$mode/$startOnMe/$locateTick",
+                here, startOnMe, { renaming = it }, Modifier.fillMaxSize(),
+            )
+            Row(Modifier.align(Alignment.BottomEnd).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MapButton(s(R.string.places_full), onFull) { c ->
+                    val w = size.width
+                    val k = w * 0.32f
+                    listOf(0f to 0f, w to 0f, 0f to w, w to w).forEach { (x, y) ->
+                        drawLine(c, Offset(x, y), Offset(if (x == 0f) k else w - k, y), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                        drawLine(c, Offset(x, y), Offset(x, if (y == 0f) k else w - k), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                    }
+                }
+                MapButton(s(R.string.places_locate), { here = PlaceTracker.lastFix(ctx); startOnMe = true; locateTick++ }) { c ->
+                    val m = Offset(size.width / 2, size.height / 2)
+                    drawCircle(c, size.width * 0.17f, m, style = Stroke(2.dp.toPx()))
+                    listOf(0f to -1f, 0f to 1f, -1f to 0f, 1f to 0f).forEach { (dx, dy) ->
+                        drawLine(c, Offset(m.x + dx * size.width * 0.3f, m.y + dy * size.width * 0.3f), Offset(m.x + dx * size.width * 0.48f, m.y + dy * size.width * 0.48f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Block(Modifier.weight(1f)) {
+                Text(s(R.string.t_stops), style = MaterialTheme.typography.bodyMedium, color = muted)
+                Text(stops.size.toString(), style = MaterialTheme.typography.headlineSmall)
+            }
+            Block(Modifier.weight(1f)) {
+                Text(s(R.string.distance), style = MaterialTheme.typography.bodyMedium, color = muted)
+                Text(distanceText(ctx, metres), style = MaterialTheme.typography.headlineSmall, maxLines = 1)
+            }
+        }
+        Block {
+            Text(s(if (mode == 0) R.string.t_stops else R.string.pl_days), style = MaterialTheme.typography.titleMedium)
+            if (stops.isEmpty() && days.isEmpty()) Text(s(R.string.places_none), color = muted)
+            if (mode == 0) stops.forEachIndexed { i, st ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f).clickable { renaming = i }) {
+                        Text(names[i], style = MaterialTheme.typography.titleSmall)
+                        Text("${timeText(st.arrive)} - ${timeText(st.depart)}", style = MaterialTheme.typography.bodyMedium, color = muted)
+                        if (st.metres > 0) Text(ctx.getString(R.string.places_from_prev, distanceText(ctx, st.metres)), style = MaterialTheme.typography.bodyMedium, color = muted)
+                    }
+                    TextButton(onClick = { openInMaps(ctx, st, names[i]) }) { Text(s(R.string.open_maps)) }
+                }
+            } else days.forEach { r ->
+                Text(
+                    ctx.getString(R.string.pl_day_row, r.date.format(med), r.stops, distanceText(ctx, r.metres)),
+                    Modifier.fillMaxWidth().clickable { startOnMe = false; day = r.date; mode = 0 }.padding(vertical = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        if (top.isNotEmpty()) Block {
+            Text(s(R.string.pl_top), style = MaterialTheme.typography.titleMedium)
+            top.forEach { t ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                    Text(t.name, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    Text(ctx.getString(R.string.pl_visits, t.visits, ctx.getString(R.string.f_hours, t.ms / 3_600_000.0)), style = MaterialTheme.typography.bodyMedium, color = muted)
+                }
+            }
+        }
+        Block(Modifier.clickable { ng.pixelslimited.health.drive.Drive.openManual() }) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(s(R.string.drive_open), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                Text(s(R.string.go_word), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        TextButton(onClick = { confirm = true }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.places_delete)) }
+    } else Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Box(Modifier.fillMaxSize()) {
                 // The map is the whole page; every control floats over it.
@@ -371,6 +477,7 @@ private fun RouteMap(
             setMultiTouchControls(true)
             isTilesScaledToDpi = true
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
+            setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
             // Open straight on your last known position so the first tiles loaded are the ones you need.
             if (start != null) {
                 controller.setZoom(16.0)

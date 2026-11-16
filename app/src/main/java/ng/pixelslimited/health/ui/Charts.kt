@@ -61,7 +61,7 @@ fun Block(modifier: Modifier = Modifier, fill: Float = -1f, content: @Composable
         modifier.fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .liquid(fill)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            .border(2.dp, MaterialTheme.colorScheme.outlineVariant)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
@@ -251,73 +251,65 @@ fun SleepChart(entries: List<Entry>, desc: String, info: (Int) -> String) {
 }
 
 @Composable
-fun NavIcon(kind: Int, tint: Color, bg: Color) {
-    Canvas(Modifier.size(24.dp)) {
-        val sw = 2.dp.toPx()
+fun NavIcon(kind: Int, tint: Color) {
+    Canvas(Modifier.size(26.dp)) {
+        val u = size.minDimension / 24f
+        val st = Stroke(1.8f * u, cap = StrokeCap.Round, join = StrokeJoin.Round)
         when (kind) {
             0 -> {
-                drawCircle(tint, size.minDimension / 2 - sw, style = Stroke(sw))
-                drawCircle(tint, 3.dp.toPx())
+                val p = Path()
+                p.moveTo(3 * u, 11 * u); p.lineTo(12 * u, 3 * u); p.lineTo(21 * u, 11 * u); p.lineTo(21 * u, 21 * u)
+                p.lineTo(15 * u, 21 * u); p.lineTo(15 * u, 14 * u); p.lineTo(9 * u, 14 * u); p.lineTo(9 * u, 21 * u); p.lineTo(3 * u, 21 * u); p.close()
+                drawPath(p, tint, style = st)
             }
             1 -> {
                 val p = Path()
-                p.moveTo(0f, size.height * 0.55f)
-                p.lineTo(size.width * 0.3f, size.height * 0.55f)
-                p.lineTo(size.width * 0.42f, size.height * 0.15f)
-                p.lineTo(size.width * 0.62f, size.height * 0.9f)
-                p.lineTo(size.width * 0.74f, size.height * 0.55f)
-                p.lineTo(size.width, size.height * 0.55f)
-                drawPath(p, tint, style = Stroke(sw, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                p.moveTo(3 * u, 12 * u); p.lineTo(7 * u, 12 * u); p.lineTo(10 * u, 4 * u); p.lineTo(14 * u, 20 * u); p.lineTo(17 * u, 12 * u); p.lineTo(21 * u, 12 * u)
+                drawPath(p, tint, style = st)
             }
             2 -> {
-                val r = size.minDimension / 2 - sw / 2
-                drawCircle(tint, r)
-                drawCircle(bg, r * 0.8f, Offset(size.width / 2 + r * 0.5f, size.height / 2 - r * 0.3f))
+                val p = Path()
+                p.moveTo(12 * u, 20 * u)
+                p.cubicTo(12 * u, 20 * u, 5 * u, 15.5f * u, 5 * u, 10 * u)
+                p.cubicTo(5 * u, 6.2f * u, 9.6f * u, 5.2f * u, 12 * u, 7.5f * u)
+                p.cubicTo(14.4f * u, 5.2f * u, 19 * u, 6.2f * u, 19 * u, 10 * u)
+                p.cubicTo(19 * u, 15.5f * u, 12 * u, 20 * u, 12 * u, 20 * u)
+                drawPath(p, tint, style = st)
             }
-            else -> {
-                val path = Path()
-                path.moveTo(size.width * 0.12f, size.height * 0.88f)
-                path.lineTo(size.width * 0.42f, size.height * 0.52f)
-                path.lineTo(size.width * 0.6f, size.height * 0.72f)
-                path.lineTo(size.width * 0.86f, size.height * 0.2f)
-                drawPath(path, tint, style = Stroke(sw, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                drawCircle(tint, 3.dp.toPx(), Offset(size.width * 0.86f, size.height * 0.2f))
-            }
+            else -> listOf(5f, 12f, 19f).forEach { drawCircle(tint, 1.7f * u, Offset(it * u, 12 * u)) }
         }
     }
 }
 
-/** Four tabs with a solid Add button in the centre slot. */
+/** Home, Activity, a solid Add button in the centre, Health, More. The open tab carries the accent. */
 @Composable
 fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (Int) -> Unit, onAdd: () -> Unit) {
-    val fg = MaterialTheme.colorScheme.onSurface
+    val on = MaterialTheme.colorScheme.primary
     val mut = MaterialTheme.colorScheme.onSurfaceVariant
-    val bg = MaterialTheme.colorScheme.background
-    Column(Modifier.fillMaxWidth().background(bg).navigationBarsPadding()) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
-        Row(Modifier.fillMaxWidth()) {
+    val plus = MaterialTheme.colorScheme.onPrimary
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()) {
+        Box(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.outlineVariant))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             for (slot in 0..4) {
                 if (slot == 2) {
-                    Box(
-                        Modifier.weight(1f).height(76.dp).clickable(onClick = onAdd).semantics { contentDescription = addLabel },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Box(Modifier.size(48.dp).background(fg, RoundedCornerShape(6.dp)), contentAlignment = Alignment.Center) {
-                            Canvas(Modifier.size(20.dp)) {
+                    Box(Modifier.weight(1f).height(76.dp).clickable(onClick = onAdd).semantics { contentDescription = addLabel }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(56.dp).background(on), contentAlignment = Alignment.Center) {
+                            Canvas(Modifier.size(22.dp)) {
                                 val sw = 3.dp.toPx()
-                                drawLine(bg, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth = sw)
-                                drawLine(bg, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = sw)
+                                drawLine(plus, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth = sw, cap = StrokeCap.Round)
+                                drawLine(plus, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = sw, cap = StrokeCap.Round)
                             }
                         }
                     }
                 } else {
                     val i = if (slot < 2) slot else slot - 1
-                    val on = i == selected
-                    val tint = if (on) fg else mut
-                    Column(Modifier.weight(1f).height(76.dp).clickable { onSelect(i) }, horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(Modifier.fillMaxWidth().height(3.dp).background(if (on) fg else Color.Transparent))
-                        Box(Modifier.padding(top = 12.dp, bottom = 2.dp)) { NavIcon(i, tint, bg) }
-                        Text(labels[i], style = MaterialTheme.typography.labelMedium, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = tint, maxLines = 1)
+                    val tint = if (i == selected) on else mut
+                    Column(
+                        Modifier.weight(1f).height(76.dp).clickable { onSelect(i) },
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                    ) {
+                        NavIcon(i, tint)
+                        Text(labels[i], style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = tint, maxLines = 1)
                     }
                 }
             }

@@ -91,7 +91,7 @@ fun Stat(label: String, value: String) {
     }
 }
 
-/** Primary action: solid ink. The accent colour is kept for data. */
+/** Primary action: solid accent. */
 @Composable
 fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) {
     val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -100,10 +100,10 @@ fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean 
     androidx.compose.material3.Button(
         onClick = onClick,
         interactionSource = src,
-        modifier = modifier.heightIn(min = 52.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        modifier = modifier.heightIn(min = 56.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         enabled = enabled,
-        shape = RoundedCornerShape(6.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface, contentColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(2.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
         content = content,
     )
 }
@@ -116,10 +116,10 @@ fun OutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: 
     androidx.compose.material3.OutlinedButton(
         onClick = onClick,
         interactionSource = src,
-        modifier = modifier.heightIn(min = 52.dp).graphicsLayer { scaleX = scale; scaleY = scale },
+        modifier = modifier.heightIn(min = 56.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         enabled = enabled,
-        shape = RoundedCornerShape(6.dp),
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.onSurface),
+        shape = RoundedCornerShape(2.dp),
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
         content = content,
     )

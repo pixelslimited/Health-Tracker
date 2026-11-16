@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
@@ -111,14 +112,18 @@ internal fun now() = System.currentTimeMillis()
 fun AppRoot() {
     val data by Store.data.collectAsState()
     val me = data.me
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // 0 Home, 1 Activity (Steps, Workouts, Places), 2 Health (Vitals, Sleep, Food), 3 More. A page (reports, reminders, settings) sits on top.
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    var settings by rememberSaveable { mutableStateOf(false) }
-    var reports by rememberSaveable { mutableStateOf(false) }
+    var actSub by rememberSaveable { mutableIntStateOf(0) }
+    var healthSub by rememberSaveable { mutableIntStateOf(0) }
+    var page by rememberSaveable { mutableStateOf("") }
     var add by remember { mutableStateOf("") }
     var release by remember { mutableStateOf<Updater.Release?>(null) }
     var dismissed by rememberSaveable { mutableStateOf(false) }
     var alert by remember { mutableStateOf<Entry?>(null) }
-    val appCtx = LocalContext.current.applicationContext
+    val appCtx = ctx.applicationContext
     LaunchedEffect(Unit) { release = Updater.check() }
     // Auto-detect new readings from wearables and connected devices each time the app opens.
     LaunchedEffect(data.active) {
@@ -127,56 +132,78 @@ fun AppRoot() {
         } catch (e: Exception) {
         }
     }
-    BackHandler(settings || reports) { settings = false; reports = false }
+    BackHandler(page.isNotEmpty() || tab != 0) { if (page.isNotEmpty()) page = "" else tab = 0 }
     val save: (Entry) -> Unit = { e ->
         Store.edit { it.copy(entries = it.entries + e) }
         if (level(e) == Level.DANGER) alert = e
         StepService.start(appCtx)
     }
-    val titles = listOf(R.string.tab_today, R.string.tab_vitals, R.string.t_sleep, R.string.tab_move)
+    val go: (Int, Int) -> Unit = { t, sub ->
+        page = ""
+        tab = t
+        if (t == 1) actSub = sub else if (t == 2) healthSub = sub
+    }
+    val titles = listOf(R.string.tab_home, R.string.tab_activity, R.string.tab_health, R.string.tab_more)
+    val target = if (page.isNotEmpty()) page else tab.toString() + (if (tab == 1) actSub else if (tab == 2) healthSub else 0)
+    val scroll = rememberScrollState()
+    LaunchedEffect(target) { scroll.scrollTo(0) }
     Scaffold(
-        bottomBar = {
-            if (!settings && !reports) BottomBar(titles.map { s(it) }, tab, s(R.string.add), { tab = it }, { add = "pick" })
-        }
+        bottomBar = { BottomBar(titles.map { s(it) }, if (page.isNotEmpty()) 3 else tab, s(R.string.add), { page = ""; tab = it }, { add = "pick" }) }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            Modifier.fillMaxSize().verticalScroll(scroll)
                 .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp).fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(dateText() + "  /  " + me.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                    Text(s(if (settings) R.string.settings else if (reports) R.string.tab_reports else titles[tab]), style = MaterialTheme.typography.headlineMedium)
+            if (page.isNotEmpty()) {
+                Column {
+                    Text(s(R.string.back), Modifier.clickable { page = "" }.padding(vertical = 10.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(s(when (page) { "reports" -> R.string.tab_reports; "reminders" -> R.string.reminders; else -> R.string.profile_title }), style = MaterialTheme.typography.headlineMedium)
                 }
-                Box(
-                    Modifier.padding(end = 8.dp).size(48.dp).border(1.5.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(6.dp)).clickable { reports = !reports; settings = false },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(if (reports) Icons.Filled.Close else Icons.Filled.DateRange, contentDescription = s(R.string.tab_reports))
+            } else if (tab == 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(dateText() + "  /  " + me.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        Text(s(R.string.tab_today), style = MaterialTheme.typography.headlineMedium)
+                    }
+                    Box(
+                        Modifier.size(52.dp).border(2.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(2.dp)).clickable { page = "settings" },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Filled.Person, contentDescription = s(R.string.profile_title)) }
                 }
-                Box(
-                    Modifier.size(48.dp).border(1.5.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(6.dp)).clickable { settings = !settings; reports = false },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(if (settings) Icons.Filled.Close else Icons.Filled.Settings, contentDescription = s(R.string.settings))
-                }
+            } else {
+                Text(s(titles[tab]), style = MaterialTheme.typography.headlineMedium)
             }
+            if (page.isEmpty() && tab == 1) Seg(listOf(s(R.string.steps), s(R.string.workouts), s(R.string.places)), actSub) { actSub = it }
+            if (page.isEmpty() && tab == 2) Seg(listOf(s(R.string.tab_vitals), s(R.string.t_sleep), s(R.string.tab_food)), healthSub) { healthSub = it }
             AnimatedContent(
-                targetState = if (settings) -1 else if (reports) -2 else tab,
+                targetState = target,
                 transitionSpec = { fadeIn(tween(240)) togetherWith fadeOut(tween(120)) },
                 label = "screen",
-            ) { page ->
-                Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                    when (page) {
-                        -1 -> Settings(data, me)
-                        0 -> Today(me, { tab = it }, save)
-                        1 -> Vitals(me) { add = it }
-                        2 -> SleepScreen(me, save) { add = it }
-                        -2 -> Reports(me) { add = it }
-                        else -> Move(me, save)
+            ) { k ->
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    when (k) {
+                        "settings" -> Settings(data, me)
+                        "reports" -> Reports(me)
+                        "reminders" -> RemindersPage(me)
+                        "00" -> Home(me, go) { page = it }
+                        "10" -> StepsPage(me)
+                        "11" -> WorkoutsPage(me, save)
+                        "12" -> PlacesPage(me)
+                        "20" -> VitalsPage(me) { add = it }
+                        "21" -> {
+                            SleepScreen(me, save) { add = it }
+                            SleepAuto()
+                        }
+                        "22" -> FoodPage(me, { add = it }, save)
+                        else -> MorePage(go, { page = it }) {
+                            scope.launch {
+                                val r = Updater.check()
+                                if (r == null) toast(ctx, ctx.getString(R.string.up_to_date)) else { release = r; dismissed = false }
+                            }
+                        }
                     }
                 }
             }
@@ -193,6 +220,18 @@ fun AppRoot() {
     }
     AddFlow(me, add, { add = it }, save)
     alert?.let { EmergencyDialog(me, it) { alert = null } }
+}
+
+@Composable
+fun SleepAuto() {
+    val ctx = LocalContext.current
+    var on by remember { mutableStateOf(ng.pixelslimited.health.sleep.SleepDetector.auto(ctx)) }
+    Block {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(s(R.string.sleep_auto), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+            Switch(checked = on, onCheckedChange = { on = it; ng.pixelslimited.health.sleep.SleepDetector.setAuto(ctx, it) })
+        }
+    }
 }
 
 /** Floating pill above the tab bar: new version, one tap to download and install, or dismiss for now. */
@@ -350,7 +389,7 @@ fun EmergencyDialog(me: Profile, e: Entry, onClose: () -> Unit) {
 }
 
 @Composable
-fun Reports(me: Profile, onAdd: (String) -> Unit) {
+fun Reports(me: Profile) {
     val ctx = LocalContext.current
     var risk by remember { mutableStateOf(false) }
     val from = now() - 7 * 86400000L
@@ -359,7 +398,8 @@ fun Reports(me: Profile, onAdd: (String) -> Unit) {
     fun avg(list: List<Double>): String = if (list.isEmpty()) ctx.getString(R.string.none) else String.format(Locale.US, "%.0f", list.average())
     val bp = me.since(T.BP, from)
     val sleep = me.since(T.SLEEP, from)
-    Section(s(R.string.last_7_days)) {
+    Block {
+        Text(s(R.string.last_7_days), style = MaterialTheme.typography.titleMedium)
         Stat(s(R.string.avg_steps), days.average().toInt().toString())
         Stat(s(R.string.distance), distanceText(ctx, me.metres(days.sum())))
         Stat(s(R.string.goal_days), ctx.getString(R.string.of_total, days.count { it >= me.dailyGoal }, 7))
@@ -370,18 +410,24 @@ fun Reports(me: Profile, onAdd: (String) -> Unit) {
         Stat(s(R.string.t_sleep), if (sleep.isEmpty()) s(R.string.none) else ctx.getString(R.string.f_hours, sleep.map { it.a }.average()))
         me.bmi()?.let { Stat(s(R.string.bmi), String.format(Locale.US, "%.1f", it)) }
     }
-    LogSections(me, onAdd)
-    Section(s(R.string.export)) {
-        Text(s(R.string.export_desc), style = MaterialTheme.typography.bodyMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { runCatching { Export.share(ctx, Export.pdf(ctx, me), "application/pdf") }.onFailure { toast(ctx, ctx.getString(R.string.export_failed)) } }) { Text("PDF") }
-            OutlinedButton(onClick = { runCatching { Export.share(ctx, Export.csv(ctx, me), "text/csv") }.onFailure { toast(ctx, ctx.getString(R.string.export_failed)) } }) { Text("CSV") }
+    Block {
+        Text(s(R.string.export), style = MaterialTheme.typography.titleMedium)
+        Text(s(R.string.export_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = { runCatching { Export.share(ctx, Export.pdf(ctx, me), "application/pdf") }.onFailure { toast(ctx, ctx.getString(R.string.export_failed)) } }, modifier = Modifier.weight(1f)) { Text("PDF") }
+            OutlinedButton(onClick = { runCatching { Export.share(ctx, Export.csv(ctx, me), "text/csv") }.onFailure { toast(ctx, ctx.getString(R.string.export_failed)) } }, modifier = Modifier.weight(1f)) { Text("CSV") }
         }
     }
-    Section(s(R.string.risk_title)) {
-        Text(s(R.string.risk_desc), style = MaterialTheme.typography.bodyMedium)
-        Button(onClick = { risk = true }) { Text(s(R.string.risk_start)) }
+    Block(Modifier.clickable { risk = true }) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(s(R.string.risk_title), style = MaterialTheme.typography.titleMedium)
+                Text(s(R.string.risk_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(s(R.string.risk_start), Modifier.padding(start = 12.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+        }
     }
+    RecentEntries(me)
     Text(s(R.string.disclaimer), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     if (risk) RiskDialog(me) { risk = false }
 }

@@ -103,35 +103,6 @@ fun Settings(data: AppData, me: Profile) {
         Text(s(R.string.targets_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
-    Section(s(R.string.reminders)) {
-        me.reminders.forEach { r ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(String.format(Locale.US, "%02d:%02d", r.hour, r.minute), style = MaterialTheme.typography.titleMedium)
-                    Text(r.label, style = MaterialTheme.typography.bodyMedium)
-                }
-                Switch(checked = r.on, onCheckedChange = { on ->
-                    val changed = r.copy(on = on)
-                    Store.edit { p -> p.copy(reminders = p.reminders.map { if (it.id == r.id) changed else it }) }
-                    Reminders.schedule(ctx, changed)
-                })
-                IconButton(onClick = {
-                    Reminders.cancel(ctx, r)
-                    Store.edit { p -> p.copy(reminders = p.reminders.filter { it.id != r.id }) }
-                }) { Icon(Icons.Filled.Delete, contentDescription = s(R.string.delete)) }
-            }
-        }
-        OutlinedButton(onClick = { dlg = "reminder" }) { Text(s(R.string.add_reminder)) }
-        if (!Reminders.canExact(ctx)) {
-            Text(s(R.string.exact_alarm_desc), style = MaterialTheme.typography.bodyMedium)
-            OutlinedButton(onClick = {
-                if (Build.VERSION.SDK_INT >= 31) ctx.startActivity(
-                    Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-            }) { Text(s(R.string.allow_btn)) }
-        }
-    }
-
     var batteryOk by remember { mutableStateOf(ctx.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName)) }
     if (!batteryOk) Section(s(R.string.keep_alive)) {
         Text(s(R.string.keep_alive_desc), style = MaterialTheme.typography.bodyMedium)
@@ -206,17 +177,6 @@ fun Settings(data: AppData, me: Profile) {
                 },
                 dismissButton = { TextButton(onClick = { dlg = "" }) { Text(s(R.string.cancel)) } },
             )
-        }
-        "reminder" -> RulerDialog(
-            s(R.string.add_reminder),
-            listOf(RulerSpec(s(R.string.hour), 0..23, 1, 8), RulerSpec(s(R.string.minute), 0..55, 5, 0)),
-            note = true,
-            onClose = { dlg = "" },
-        ) { v, note ->
-            val r = Reminder((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), note.ifBlank { ctx.getString(R.string.reminder_default) }, v[0], v[1])
-            Store.edit { it.copy(reminders = it.reminders + r) }
-            Reminders.schedule(ctx, r)
-            dlg = ""
         }
     }
 

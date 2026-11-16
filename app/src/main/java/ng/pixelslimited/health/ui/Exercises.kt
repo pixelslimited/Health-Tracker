@@ -377,56 +377,6 @@ fun DrillAnimation(d: Drill) {
 }
 
 @Composable
-fun WorkoutBlock(me: ng.pixelslimited.health.data.Profile, done: Int, onStart: (Int) -> Unit, cat: Int, setCat: (Int) -> Unit) {
-    val ctx = LocalContext.current
-    var confirm by remember { mutableStateOf(false) }
-    // The programme starts the first time this is shown.
-    LaunchedEffect(me.fitStart.isBlank()) {
-        if (me.fitStart.isBlank()) ng.pixelslimited.health.data.Store.edit { it.copy(fitStart = LocalDate.now().toString()) }
-    }
-    val day = Workouts.programDay(me.fitStart)
-    val list = Workouts.plan(cat, me.fitLevel, day, Workouts.adjust(me))
-    Block {
-        MetricHeader(s(R.string.workout_today), ctx.getString(R.string.of_total, done.coerceAtMost(list.size), list.size))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(ctx.getString(R.string.program_day, day), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-            TextButton(onClick = { confirm = true }) { Text(s(R.string.restart_program)) }
-        }
-        if (Workouts.isRecovery(day)) Text(s(R.string.recovery_day), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = cat == 0, onClick = { setCat(0) }, label = { Text(s(R.string.cat_flat)) })
-            FilterChip(selected = cat == 1, onClick = { setCat(1) }, label = { Text(s(R.string.cat_build)) })
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(R.string.level_easy, R.string.level_mid, R.string.level_hard).forEachIndexed { i, label ->
-                FilterChip(selected = me.fitLevel == i, onClick = { ng.pixelslimited.health.data.Store.edit { it.copy(fitLevel = i) } }, label = { Text(s(label)) })
-            }
-        }
-        list.forEach { pl ->
-            Row(Modifier.fillMaxWidth()) {
-                Text(s(pl.drill.name), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    ctx.getString(if (pl.drill.seconds) R.string.sets_secs else R.string.sets_reps, pl.sets, pl.count),
-                    style = MaterialTheme.typography.bodyLarge.copy(fontFeatureSettings = "tnum"), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Button(onClick = { onStart(cat) }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.start_workout)) }
-    }
-    if (confirm) androidx.compose.material3.AlertDialog(
-        onDismissRequest = { confirm = false },
-        text = { Text(s(R.string.restart_confirm)) },
-        confirmButton = {
-            TextButton(onClick = {
-                ng.pixelslimited.health.data.Store.edit { it.copy(fitStart = LocalDate.now().toString()) }
-                confirm = false
-            }) { Text(s(R.string.restart_yes)) }
-        },
-        dismissButton = { TextButton(onClick = { confirm = false }) { Text(s(R.string.cancel)) } },
-    )
-}
-
-@Composable
 private fun DrillTimer(total: Int) {
     val ctx = LocalContext.current
     var left by remember { mutableIntStateOf(total) }
