@@ -11,6 +11,7 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.provider.Settings
 import android.speech.RecognizerIntent
+import android.speech.tts.TextToSpeech
 import android.view.MotionEvent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,14 +31,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -46,15 +48,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -71,6 +75,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -78,13 +83,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -98,6 +107,13 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
+import java.io.File
+import java.util.Date
+import java.util.Locale
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -107,9 +123,10 @@ import ng.pixelslimited.health.data.distanceText
 import ng.pixelslimited.health.data.metresBetween
 import ng.pixelslimited.health.drive.Drive
 import ng.pixelslimited.health.drive.Hit
-import ng.pixelslimited.health.drive.Incident
+import ng.pixelslimited.health.drive.PlaceInfo
 import ng.pixelslimited.health.drive.Route
 import ng.pixelslimited.health.drive.Routing
+import ng.pixelslimited.health.drive.Sug
 import ng.pixelslimited.health.places.PlaceTracker
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.MapTileProviderBasic
@@ -123,13 +140,6 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.TilesOverlay
-import java.io.File
-import java.util.Date
-import java.util.Locale
-import kotlin.math.cos
-import kotlin.math.min
-import kotlin.math.roundToInt
-import kotlin.math.sin
 
 // Drive mode uses the app's own scheme: ink and paper base tones, one red accent, in light and dark.
 private class Pal(val dark: Boolean, val bg: Color, val card: Color, val field: Color, val line: Color, val off: Color, val grey: Color, val ink: Color, val accent: Color)
@@ -151,25 +161,73 @@ private val RED get() = pal.accent
 private val ONACC = Color(0xFFF4F1EA)    // text on the accent
 private val AMBER = Color(0xFFFFB020)
 
+
 private val INTER = FontFamily(Font(R.font.inter_regular), Font(R.font.inter_semibold, FontWeight.SemiBold))
-private val COND = FontFamily(Typeface.create("sans-serif-condensed", Typeface.BOLD))
 private val CARDS = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
-private val NAMES = mapOf(0 to "N", 45 to "NE", 90 to "E", 135 to "SE", 180 to "S", 225 to "SW", 270 to "W", 315 to "NW")
+private val SQ = RoundedCornerShape(2.dp)
 
 @Composable
 private fun Tx(t: String, size: Int, color: Color = INK, cond: Boolean = false, modifier: Modifier = Modifier, align: TextAlign? = null, maxLines: Int = Int.MAX_VALUE) {
     Text(
-        t, modifier, color = color, fontSize = size.sp, fontFamily = if (cond) COND else INTER,
-        fontWeight = if (cond) FontWeight.SemiBold else FontWeight.Normal, textAlign = align, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
+        t, modifier, color = color, fontSize = size.sp, lineHeight = (size * 1.15f).sp, fontFamily = if (cond) Brand else INTER,
+        fontWeight = if (cond) FontWeight.Black else FontWeight.Normal, textAlign = align, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
+        letterSpacing = if (cond && size > 40) (-2).sp else 0.sp,
     )
 }
 
 @Composable
-private fun Cell(label: String, value: String, size: Int = 36, color: Color = INK, align: Alignment.Horizontal = Alignment.Start) {
-    Column(horizontalAlignment = align) {
-        Tx(value, size, color, cond = true, maxLines = 1)
-        Tx(label, 16, GREY, maxLines = 1)
+private fun Pill(label: String, on: Boolean = false, onClick: () -> Unit) {
+    Box(Modifier.heightIn(min = 44.dp).clip(SQ).background(if (on) LIME else FIELD).clickable(onClick = onClick).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+        Tx(label, 16, if (on) ONACC else INK, maxLines = 1)
     }
+}
+
+@Composable
+private fun Btn(label: String, primary: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Box(
+        modifier.height(52.dp).clip(SQ).background(if (primary) LIME else Color.Transparent).border(2.dp, if (primary) LIME else INK, SQ).clickable(onClick = onClick).padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) { Tx(label, 16, if (primary) ONACC else INK, maxLines = 1) }
+}
+
+@Composable
+private fun MapBtn(desc: String, onClick: () -> Unit, glyph: androidx.compose.ui.graphics.drawscope.DrawScope.(Color) -> Unit) {
+    val ink = INK
+    Box(Modifier.size(48.dp).clip(SQ).background(BG).border(1.dp, LINE, SQ).clickable(onClick = onClick).semantics { contentDescription = desc }, contentAlignment = Alignment.Center) {
+        ComposeCanvas(Modifier.size(24.dp)) { glyph(ink) }
+    }
+}
+
+/** Arrow for the next manoeuvre, turned to match it. */
+@Composable
+private fun TurnGlyph(man: String, color: Color) {
+    val ang = when {
+        man.contains("UTURN") -> 180f
+        man.contains("SHARP_LEFT") -> -135f
+        man.contains("SHARP_RIGHT") -> 135f
+        man.contains("SLIGHT_LEFT") || man.contains("KEEP_LEFT") || man.contains("BEAR_LEFT") -> -45f
+        man.contains("SLIGHT_RIGHT") || man.contains("KEEP_RIGHT") || man.contains("BEAR_RIGHT") -> 45f
+        man.contains("LEFT") -> -90f
+        man.contains("RIGHT") -> 90f
+        else -> 0f
+    }
+    ComposeCanvas(Modifier.size(44.dp)) {
+        val w = size.minDimension
+        val sw = w * 0.11f
+        val c = Offset(w / 2, w / 2)
+        if (man.contains("ROUNDABOUT")) drawCircle(color, w * 0.2f, c, style = Stroke(sw))
+        drawLine(color, Offset(c.x, w * 0.92f), c, sw, StrokeCap.Round)
+        rotate(ang, c) {
+            drawLine(color, c, Offset(c.x, w * 0.14f), sw, StrokeCap.Round)
+            drawLine(color, Offset(c.x, w * 0.14f), Offset(c.x - w * 0.18f, w * 0.34f), sw, StrokeCap.Round)
+            drawLine(color, Offset(c.x, w * 0.14f), Offset(c.x + w * 0.18f, w * 0.34f), sw, StrokeCap.Round)
+        }
+    }
+}
+
+private fun minsText(ctx: android.content.Context, secs: Double): String {
+    val m = (secs / 60).roundToInt()
+    return if (m < 60) ctx.getString(R.string.drive_min, m) else ctx.getString(R.string.dur_hm, m / 60, m % 60)
 }
 
 @Composable
@@ -178,6 +236,7 @@ fun DriveScreen(onClose: () -> Unit) {
     val app = ctx.applicationContext
     val scope = rememberCoroutineScope()
     val kb = LocalSoftwareKeyboardController.current
+    val focusMgr = LocalFocusManager.current
     val want = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) DarkPal else LightPal
     if (pal !== want) pal = want
 
@@ -190,106 +249,140 @@ fun DriveScreen(onClose: () -> Unit) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { delay(1000); now = System.currentTimeMillis() } }
 
-    var big by remember { mutableIntStateOf(0) }          // 0 split, 1 speedometer large, 2 map large
+    var big by remember { mutableIntStateOf(0) }          // 0 split, 1 speed large, 2 map large
+    var stage by remember { mutableIntStateOf(0) }        // 0 driving, 1 place chosen, 2 route preview, 3 navigating
     var showSet by remember { mutableStateOf(false) }
     var key by remember { mutableStateOf(Drive.key(ctx)) }
     var auto by remember { mutableStateOf(Drive.auto(ctx)) }
-    var traffic by remember { mutableStateOf(true) }
     var follow by remember { mutableStateOf(true) }
     var fit by remember { mutableIntStateOf(0) }
     var query by remember { mutableStateOf("") }
-    var hits by remember { mutableStateOf<List<Hit>>(emptyList()) }
-    var dest by remember { mutableStateOf<Hit?>(null) }
-    var route by remember { mutableStateOf<Route?>(null) }
-    var alt by remember { mutableStateOf<Route?>(null) }
-    var altTried by remember { mutableStateOf(false) }
-    var useAlt by remember { mutableStateOf(false) }
+    var focused by remember { mutableStateOf(false) }
+    var sugs by remember { mutableStateOf<List<Sug>>(emptyList()) }
+    var recents by remember { mutableStateOf(Drive.recents(ctx)) }
+    var place by remember { mutableStateOf<PlaceInfo?>(null) }
+    var routes by remember { mutableStateOf<List<Route>>(emptyList()) }
+    var sel by remember { mutableIntStateOf(0) }
+    var tolls by remember { mutableStateOf(false) }
+    var mute by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var lastFetch by remember { mutableLongStateOf(0L) }
     var avgSp by remember { mutableFloatStateOf(0f) }
     var limit by remember { mutableStateOf<Int?>(null) }
     var limitAt by remember { mutableLongStateOf(0L) }
-    var incidents by remember { mutableStateOf<List<Incident>>(emptyList()) }
 
     val fix = Drive.fix
     val live = fix != null && now - fix.ts < 6000
     val kmh by animateFloatAsState(if (fix != null && live) fix.speed * 3.6f else 0f, spring(dampingRatio = 0.8f, stiffness = 120f), label = "speed")
-    val bearing = fix?.bearing
-    var hdg by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(bearing) {
-        if (bearing != null) hdg += ((bearing - hdg % 360f + 540f) % 360f) - 180f
-    }
-    val hdgA by animateFloatAsState(hdg, tween(700), label = "heading")
-    val nb = (((bearing ?: 0f) % 360f) + 360f) % 360f
+    val nb = (((fix?.bearing ?: 0f) % 360f) + 360f) % 360f
     LaunchedEffect(fix) { fix?.let { avgSp = avgSp * 0.9f + it.speed * 0.1f } }
 
-    fun reroute() {
-        val d = dest ?: return
-        val f = Drive.fix ?: return
+    val tts = remember { arrayOfNulls<TextToSpeech>(1) }
+    var ttsOk by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        val t = TextToSpeech(app) { ttsOk = it == TextToSpeech.SUCCESS }
+        tts[0] = t
+        onDispose { t.stop(); t.shutdown() }
+    }
+    fun say(x: String) {
+        if (!mute && ttsOk && x.isNotEmpty()) tts[0]?.speak(x, TextToSpeech.QUEUE_FLUSH, null, "nav")
+    }
+
+    fun fetch() {
+        val d = place ?: return
+        val o = Drive.fix?.let { it.lat to it.lon } ?: PlaceTracker.lastFix(ctx)
+        if (o == null) { status = ctx.getString(R.string.drive_waiting); return }
         if (busy) return
         busy = true
         lastFetch = System.currentTimeMillis()
+        val av = tolls
         val k = key
-        val wantAlt = useAlt
         scope.launch(Dispatchers.IO) {
-            val r = Routing.route(f.lat, f.lon, d.lat, d.lon, k)
-            val a = if (wantAlt) Routing.route(f.lat, f.lon, d.lat, d.lon, k, true) else null
+            val r = Routing.routes(app, o.first, o.second, d, av, k)
             withContext(Dispatchers.Main) {
                 busy = false
-                if (dest === d) {
-                    val first = route == null && r.route != null
-                    if (r.route != null) route = r.route
-                    if (a?.route != null) alt = a.route
-                    status = if (r.route == null) ctx.getString(R.string.drive_noroute) else if (r.keyBad) ctx.getString(R.string.drive_keybad) else ""
-                    if (first) {
-                        fit++
-                        if ((Drive.fix?.speed ?: 0f) < 2f) follow = false
-                    }
+                if (place === d) {
+                    if (r.isNotEmpty()) {
+                        routes = r
+                        sel = 0
+                        status = if (Routing.keyBad) ctx.getString(R.string.drive_keybad) else ""
+                        if (stage == 2) fit++
+                    } else status = ctx.getString(R.string.drive_noroute)
                 }
             }
         }
     }
-    LaunchedEffect(dest) {
-        route = null
-        alt = null
-        altTried = false
-        useAlt = false
-        status = ""
-        while (dest != null) {
-            if (Drive.fix != null) reroute()
-            delay(if (route == null) 3000L else 90_000L)
+    fun choose(p: PlaceInfo) {
+        place = p; routes = emptyList(); sel = 0; stage = 1; follow = false; query = p.name; status = ""; fit++
+        Drive.addRecent(ctx, p)
+        recents = Drive.recents(ctx)
+    }
+    fun unfocus() { kb?.hide(); focusMgr.clearFocus() }
+    fun gmaps(p: PlaceInfo) {
+        try {
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=" + p.lat + "," + p.lon + "&mode=d")).setPackage("com.google.android.apps.maps").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            try {
+                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=" + p.lat + "," + p.lon)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e2: Exception) {
+                Toast.makeText(ctx, ctx.getString(R.string.no_app), Toast.LENGTH_SHORT).show()
+            }
         }
     }
-    // "Avoid tolls" alternative, fetched once the map is enlarged.
-    LaunchedEffect(big, dest, route) {
-        val d = dest
+    val goBack: () -> Unit = {
+        when {
+            showSet -> showSet = false
+            focused -> unfocus()
+            stage == 3 -> { stage = 0; place = null; routes = emptyList(); query = ""; follow = true }
+            stage == 2 -> stage = 1
+            stage == 1 -> { stage = 0; place = null; query = ""; follow = true }
+            else -> onClose()
+        }
+    }
+
+    // Suggestions while typing.
+    LaunchedEffect(query, focused) {
+        if (!focused) return@LaunchedEffect
+        val q = query.trim()
+        if (q.length < 2) { sugs = emptyList(); return@LaunchedEffect }
+        delay(350)
         val f = Drive.fix
-        if (big == 2 && d != null && f != null && route != null && alt == null && !altTried) {
-            altTried = true
-            val k = key
-            val r = withContext(Dispatchers.IO) { Routing.route(f.lat, f.lon, d.lat, d.lon, k, true) }
-            if (dest === d) alt = r.route
+        sugs = withContext(Dispatchers.IO) { Routing.suggest(app, q, f?.lat, f?.lon) }
+        status = if (sugs.isEmpty()) ctx.getString(R.string.drive_noplace) else ""
+    }
+    LaunchedEffect(tolls) { if (stage >= 2) fetch() }
+    val speak = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        val t = r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+        if (t != null) {
+            query = t
+            scope.launch {
+                val f = Drive.fix
+                val r = withContext(Dispatchers.IO) { Routing.suggest(app, t, f?.lat, f?.lon) }.firstOrNull()
+                if (r != null) choose(PlaceInfo(r.main, r.sub, r.lat, r.lon)) else status = ctx.getString(R.string.drive_noplace)
+            }
         }
     }
-    val rt = run {
-        val a = alt
-        if (useAlt && a != null) a else route
-    }
-    val prog = remember(fix, rt) {
-        if (rt != null && fix != null) rt.progress(fix.lat, fix.lon) else null
-    }
-    val remM = prog?.first
-    val off = prog?.second
+
+    val rt = routes.getOrNull(sel)
+    val prog = remember(fix, rt) { if (rt != null && fix != null) rt.prog(fix.lat, fix.lon) else null }
+    // Off the route, or the traffic picture is getting old: fetch again.
     LaunchedEffect(now) {
-        if (off != null && off > 150.0 && now - lastFetch > 20_000L) reroute()
+        if (stage == 3 && prog != null && ((prog.off > 150.0 && now - lastFetch > 20_000L) || now - lastFetch > 150_000L)) fetch()
     }
-    LaunchedEffect(remM) {
-        if (remM != null && off != null && remM < 40.0 && off < 120.0) {
+    LaunchedEffect(prog?.rem) {
+        if (stage == 3 && prog != null && prog.rem < 40.0 && prog.off < 120.0) {
             Toast.makeText(ctx, ctx.getString(R.string.drive_arrived), Toast.LENGTH_LONG).show()
-            dest = null
-            route = null
+            say(ctx.getString(R.string.drive_arrived))
+            stage = 0; place = null; routes = emptyList(); query = ""
         }
+    }
+    // Spoken directions: once on approach, once at the turn.
+    val bucket = if (prog == null || stage != 3) 0 else if (prog.toNext < 80.0) 2 else if (prog.toNext < 800.0) 1 else 0
+    LaunchedEffect(stage, prog?.next, bucket) {
+        if (stage != 3 || prog == null || rt == null || bucket == 0) return@LaunchedEffect
+        val text = if (prog.next >= 0) rt.steps[prog.next].text else ctx.getString(R.string.drive_arrive_at, place?.name ?: "")
+        say(if (bucket == 1) ctx.getString(R.string.drive_in_m, (Math.round(prog.toNext / 50.0) * 50).toInt(), text) else text)
     }
     // Speed limit of the road you are on (OpenStreetMap), checked every 15 s while moving.
     LaunchedEffect(now / 15_000L) {
@@ -299,332 +392,257 @@ fun DriveScreen(onClose: () -> Unit) {
             if (l != null) { limit = l; limitAt = System.currentTimeMillis() } else if (System.currentTimeMillis() - limitAt > 60_000L) limit = null
         }
     }
-    // Incidents nearby (TomTom key), only while the map is enlarged.
-    LaunchedEffect(now / 60_000L, big, key) {
-        val f = Drive.fix
-        if (big == 2 && f != null && key.isNotEmpty()) incidents = withContext(Dispatchers.IO) { Routing.incidents(f.lat, f.lon, key) }
-    }
-
-    fun search() {
-        val q = query.trim()
-        if (q.isEmpty()) return
-        kb?.hide()
-        val f = Drive.fix
-        scope.launch(Dispatchers.IO) {
-            val r = Routing.search(app, q, f?.lat, f?.lon)
-            withContext(Dispatchers.Main) {
-                hits = r
-                status = if (r.isEmpty()) ctx.getString(R.string.drive_noplace) else ""
-            }
-        }
-    }
-    val speak = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        val t = r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-        if (t != null) { query = t; search() }
-    }
-
-    val gW by animateFloatAsState(when (big) { 0 -> 360f; 1 -> 590f; else -> 160f }, tween(450), label = "gw")
-    val mW by animateFloatAsState(when (big) { 0 -> 424f; 1 -> 194f; else -> 624f }, tween(450), label = "mw")
     val over = limit != null && kmh > (limit ?: 0) + 2
-
-    // Permissions that let the screen appear by itself.
     val canFs = remember(now / 3000) { android.os.Build.VERSION.SDK_INT < 34 || ctx.getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent() }
     val canOver = remember(now / 3000) { Settings.canDrawOverlays(ctx) }
 
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = goBack, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val view = LocalView.current
         DisposableEffect(view) {
             view.keepScreenOn = true
             onDispose { view.keepScreenOn = false }
         }
         Box(Modifier.fillMaxSize().background(BG)) {
-            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // ---------------- speed panel ----------------
-                Column(
-                    Modifier.weight(gW).fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(CARD)
-                        .pointerInput(Unit) { detectTapGestures(onDoubleTap = { big = if (big == 1) 0 else 1 }) },
-                ) {
-                    val pulse by rememberInfiniteTransition(label = "live").animateFloat(0.3f, 1f, infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "pa")
-                    Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 14.dp).height(40.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(8.dp).clip(CircleShape).background(if (live) LIME.copy(alpha = pulse) else OFF))
-                        Spacer(Modifier.width(8.dp))
-                        Tx(s(R.string.drive_title), 16, GREY, modifier = Modifier.weight(1f), maxLines = 1)
-                        Tx(s(R.string.drive_settings), 16, INK, modifier = Modifier.clickable { showSet = !showSet }.padding(horizontal = 10.dp, vertical = 10.dp))
-                        Tx(s(R.string.close), 16, LIME, modifier = Modifier.clickable { onClose() }.padding(horizontal = 10.dp, vertical = 10.dp))
-                        if (limit != null) {
-                            Spacer(Modifier.width(6.dp))
-                            Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White).border(3.dp, RED, CircleShape), contentAlignment = Alignment.Center) {
-                                Tx((limit ?: 0).toString(), 20, Color(0xFF101417), cond = true)
-                            }
+            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                // ---------------- top: next turn while navigating, otherwise search ----------------
+                if (stage == 3 && prog != null && rt != null) {
+                    val st = rt.steps.getOrNull(prog.next)
+                    Row(Modifier.fillMaxWidth().clip(SQ).background(LIME).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        TurnGlyph(st?.man ?: "ARRIVE", ONACC)
+                        Spacer(Modifier.width(14.dp))
+                        Column(Modifier.weight(1f)) {
+                            Tx(distanceText(ctx, prog.toNext), 28, ONACC, cond = true, maxLines = 1)
+                            Tx(st?.text ?: ctx.getString(R.string.drive_arrive_at, place?.name ?: ""), 18, ONACC, maxLines = 2)
                         }
                     }
-                    if (big == 2) {
-                        // Map enlarged: a one-line speed strip.
-                        Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 4.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Tx(kmh.roundToInt().toString(), 84, if (over) RED else INK, cond = true)
-                                Spacer(Modifier.width(8.dp))
-                                Tx(s(R.string.kmh_unit), 16, GREY, modifier = Modifier.padding(bottom = 10.dp))
-                            }
-                            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(bottom = 6.dp)) {
-                                Tx(CARDS[(((nb + 22.5f) / 45f).toInt()) % 8], 40, INK, cond = true)
-                                Tx(String.format(Locale.US, "%03d°", nb.roundToInt() % 360), 16, GREY)
-                            }
-                        }
-                        ComposeCanvas(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp).height(24.dp)) {
-                            for (i in 0..36) {
-                                val h = if (i % 4 == 0) 24.dp.toPx() else 12.dp.toPx()
-                                val x = size.width * i / 36f
-                                drawLine(if (i * 5 <= kmh) LIME else OFF, Offset(x, size.height), Offset(x, size.height - h), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
-                            }
-                        }
-                    } else {
-                        // ---- tick-ring gauge ----
-                        val scale = if (kmh > 180f) 240 else 180
-                        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            val r = min(maxWidth.value / 2 - 30f, maxHeight.value / 2 - 4f).coerceAtLeast(40f)
-                            val paint = remember { Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.create("sans-serif-condensed", Typeface.NORMAL) } }
-                            ComposeCanvas(Modifier.fillMaxSize()) {
-                                val c = Offset(size.width / 2, size.height / 2)
-                                val rr = r.dp.toPx()
-                                paint.color = GREY.toArgb()
-                                paint.textSize = 20.sp.toPx()
-                                var v = 0
-                                while (v <= scale) {
-                                    val a = Math.toRadians(150.0 + v.toDouble() / scale * 240.0)
-                                    val len = (if (v % 20 == 0) 26 else if (v % 10 == 0) 18 else 10).dp.toPx()
-                                    val w = (if (v % 20 == 0) 3 else 2).dp.toPx()
-                                    val x0 = c.x + ((rr - len) * cos(a)).toFloat(); val y0 = c.y + ((rr - len) * sin(a)).toFloat()
-                                    val x1 = c.x + (rr * cos(a)).toFloat(); val y1 = c.y + (rr * sin(a)).toFloat()
-                                    drawLine(if (v <= kmh) LIME else OFF, Offset(x0, y0), Offset(x1, y1), strokeWidth = w, cap = StrokeCap.Round)
-                                    if (v % 20 == 0) {
-                                        val rl = rr - 46.dp.toPx()
-                                        drawContext.canvas.nativeCanvas.drawText(v.toString(), c.x + (rl * cos(a)).toFloat(), c.y + (rl * sin(a)).toFloat() + paint.textSize / 3, paint)
-                                    }
-                                    v += 5
-                                }
-                            }
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Tx(kmh.roundToInt().toString(), (r * 0.74f).toInt(), if (over) RED else INK, cond = true)
-                                Tx(s(if (live) R.string.kmh_unit else R.string.drive_waiting), 16, GREY)
-                            }
-                        }
-                        // ---- heading and tape ----
-                        Row(Modifier.fillMaxWidth().height(34.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
-                            Tx(CARDS[(((nb + 22.5f) / 45f).toInt()) % 8], 32, INK, cond = true)
-                            Spacer(Modifier.width(10.dp))
-                            Tx(String.format(Locale.US, "%03d° ", nb.roundToInt() % 360) + s(R.string.drive_heading), 16, GREY, modifier = Modifier.padding(bottom = 4.dp))
-                        }
-                        val tapePaint = remember { Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT } }
-                        ComposeCanvas(Modifier.fillMaxWidth().padding(top = 6.dp).height(40.dp)) {
-                            val cx = size.width / 2
-                            tapePaint.color = GREY.toArgb()
-                            tapePaint.textSize = 16.sp.toPx()
-                            var d = (Math.floor(((hdgA - 50f) / 5f).toDouble()) * 5).toInt()
-                            while (d <= hdgA + 50f) {
-                                val n = ((d % 360) + 360) % 360
-                                val x = cx + (d - hdgA) * 4.dp.toPx()
-                                val nm = NAMES[n]
-                                val hgt = (if (nm != null) 14 else if (n % 15 == 0) 10 else 6).dp.toPx()
-                                drawLine(if (nm != null) INK else GREY.copy(alpha = 0.6f), Offset(x, 12.dp.toPx()), Offset(x, 12.dp.toPx() + hgt), strokeWidth = 2.dp.toPx())
-                                if (nm != null) drawContext.canvas.nativeCanvas.drawText(nm, x, 12.dp.toPx() + hgt + 16.dp.toPx(), tapePaint)
-                                d += 5
-                            }
-                            val p = androidx.compose.ui.graphics.Path().apply {
-                                moveTo(cx - 6.dp.toPx(), 0f); lineTo(cx + 6.dp.toPx(), 0f); lineTo(cx, 9.dp.toPx()); close()
-                            }
-                            drawPath(p, LIME)
-                        }
-                        if (big == 1) {
-                            val avg = if (Drive.movingMs > 3000) (Drive.tripM / (Drive.movingMs / 1000.0) * 3.6).roundToInt() else 0
-                            Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Cell(s(R.string.drive_avg), ctx.getString(R.string.f_kmh, avg), 28)
-                                Cell(s(R.string.drive_top), ctx.getString(R.string.f_kmh, (Drive.maxMs * 3.6f).roundToInt()), 28)
-                                Cell(s(R.string.drive_trip), distanceText(ctx, Drive.tripM), 28)
-                            }
-                        } else {
-                            Spacer(Modifier.height(8.dp))
-                        }
-                    }
-                }
-
-                // ---------------- map panel ----------------
-                Box(Modifier.weight(mW).fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(MAPBG)) {
-                    DriveMap(
-                        fix, rt, dest, if (key.isNotEmpty() && traffic) key + "|" + (now / 180_000L) else "", follow, fit,
-                        { follow = it },
-                        { la, lo -> dest = Hit(String.format(Locale.US, "%.5f, %.5f", la, lo), la, lo); hits = emptyList() },
-                        { big = if (big == 2) 0 else 2 },
-                        Modifier.fillMaxSize(),
-                    )
-                    Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(16.dp)).background(FIELD).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                } else {
+                    Row(Modifier.fillMaxWidth().height(56.dp).clip(SQ).background(FIELD).padding(start = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(44.dp).clickable { if (focused || stage > 0) goBack() }, contentAlignment = Alignment.Center) {
                             ComposeCanvas(Modifier.size(22.dp)) {
                                 val u = size.minDimension / 24f
-                                drawCircle(GREY, 7 * u, Offset(11 * u, 11 * u), style = Stroke(2 * u, cap = StrokeCap.Round))
-                                drawLine(GREY, Offset(16 * u, 16 * u), Offset(20 * u, 20 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
+                                if (focused || stage > 0) {
+                                    drawLine(INK, Offset(20 * u, 12 * u), Offset(5 * u, 12 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
+                                    drawLine(INK, Offset(5 * u, 12 * u), Offset(11 * u, 6 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
+                                    drawLine(INK, Offset(5 * u, 12 * u), Offset(11 * u, 18 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
+                                } else {
+                                    drawCircle(GREY, 7 * u, Offset(11 * u, 11 * u), style = Stroke(2 * u, cap = StrokeCap.Round))
+                                    drawLine(GREY, Offset(16 * u, 16 * u), Offset(20 * u, 20 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
+                                }
                             }
-                            Spacer(Modifier.width(10.dp))
-                            BasicTextField(
-                                value = query, onValueChange = { query = it }, singleLine = true,
-                                textStyle = TextStyle(color = INK, fontSize = 16.sp, fontFamily = INTER),
-                                cursorBrush = SolidColor(LIME),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(onSearch = { search() }),
-                                modifier = Modifier.weight(1f).height(44.dp),
-                                decorationBox = { inner ->
-                                    Box(Modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
-                                        if (query.isEmpty()) Tx(s(R.string.drive_search), 16, GREY)
-                                        inner()
-                                    }
-                                },
-                            )
+                        }
+                        BasicTextField(
+                            value = query, onValueChange = { query = it }, singleLine = true,
+                            textStyle = TextStyle(color = INK, fontSize = 16.sp, fontFamily = INTER),
+                            cursorBrush = SolidColor(LIME),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { sugs.firstOrNull()?.let { sg -> unfocus(); choose(PlaceInfo(sg.main, sg.sub, sg.lat, sg.lon)) } }),
+                            modifier = Modifier.weight(1f).height(44.dp).onFocusChanged { focused = it.isFocused },
+                            decorationBox = { inner ->
+                                Box(Modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
+                                    if (query.isEmpty()) Tx(s(R.string.drive_search), 16, GREY)
+                                    inner()
+                                }
+                            },
+                        )
+                        if (query.isNotEmpty()) {
+                            Box(Modifier.size(44.dp).clickable { query = ""; if (stage in 1..2) { stage = 0; place = null; routes = emptyList() } }.semantics { contentDescription = ctx.getString(R.string.drive_clear) }, contentAlignment = Alignment.Center) {
+                                ComposeCanvas(Modifier.size(18.dp)) {
+                                    drawLine(INK, Offset(0f, 0f), Offset(size.width, size.height), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                                    drawLine(INK, Offset(size.width, 0f), Offset(0f, size.height), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                                }
+                            }
+                        } else {
                             Box(
-                                Modifier.size(44.dp).clip(CircleShape).clickable {
+                                Modifier.size(44.dp).clickable {
                                     try {
                                         speak.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM))
                                     } catch (e: Exception) {
                                         Toast.makeText(ctx, ctx.getString(R.string.drive_novoice), Toast.LENGTH_SHORT).show()
                                     }
-                                },
+                                }.semantics { contentDescription = ctx.getString(R.string.drive_voice) },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 ComposeCanvas(Modifier.size(22.dp)) {
                                     val u = size.minDimension / 24f
-                                    drawRoundRect(INK, Offset(9 * u, 3 * u), Size(6 * u, 12 * u), CornerRadius(3 * u), style = Stroke(2 * u))
+                                    drawRect(INK, Offset(9 * u, 3 * u), Size(6 * u, 12 * u), style = Stroke(2 * u))
                                     drawArc(INK, 0f, 180f, false, Offset(5 * u, 4 * u), Size(14 * u, 14 * u), style = Stroke(2 * u, cap = StrokeCap.Round))
                                     drawLine(INK, Offset(12 * u, 18 * u), Offset(12 * u, 21 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
                                 }
                             }
                         }
-                        if (hits.isNotEmpty()) {
-                            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(FIELD).padding(horizontal = 14.dp)) {
-                                hits.forEach { h ->
-                                    Tx(h.name, 16, INK, modifier = Modifier.fillMaxWidth().clickable { dest = h; hits = emptyList(); query = ""; follow = false }.padding(vertical = 12.dp), maxLines = 2)
-                                }
-                            }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            if (big != 1) {
-                                Row(
-                                    Modifier.height(36.dp).clip(RoundedCornerShape(18.dp)).background(FIELD)
-                                        .clickable { if (key.isEmpty()) showSet = true else traffic = !traffic }.padding(horizontal = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Box(Modifier.size(8.dp).clip(CircleShape).background(if (key.isNotEmpty() && traffic) RED else OFF))
-                                    Spacer(Modifier.width(8.dp))
-                                    Tx(s(if (key.isNotEmpty() && traffic) R.string.drive_live else R.string.drive_nolive), 16, INK)
-                                }
-                            }
-                            dest?.let { d ->
-                                Row(
-                                    Modifier.height(36.dp).weight(1f, fill = false).clip(RoundedCornerShape(18.dp)).background(FIELD).padding(start = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Tx(d.name, 16, INK, modifier = Modifier.weight(1f, fill = false), maxLines = 1)
-                                    Tx(s(R.string.drive_clear), 16, LIME, modifier = Modifier.clickable { dest = null; route = null }.padding(horizontal = 12.dp, vertical = 8.dp))
-                                }
-                            }
-                        }
-                        if (status.isNotEmpty()) Tx(status, 16, AMBER)
                     }
-                    Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (!follow) {
-                            Box(Modifier.align(Alignment.End).height(40.dp).clip(RoundedCornerShape(20.dp)).background(LIME).clickable { follow = true }.padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
-                                Tx(s(R.string.drive_recenter), 16, ONACC)
+                }
+
+                // ---------------- map ----------------
+                Box((if (big == 1) Modifier.height(150.dp) else Modifier.weight(1f)).fillMaxWidth().clip(SQ).background(CARD)) {
+                    DriveMap(
+                        fix, routes, sel, stage >= 2, place, if (key.isNotEmpty()) key + "|" + (now / 180_000L) else "", stage == 3, follow, fit,
+                        { follow = it },
+                        { la, lo -> if (stage != 3) scope.launch { val n = withContext(Dispatchers.IO) { Routing.reverse(app, la, lo) }; choose(PlaceInfo(n, String.format(Locale.US, "%.5f, %.5f", la, lo), la, lo)) } },
+                        Modifier.fillMaxSize(),
+                    )
+                    if (limit != null) {
+                        Box(Modifier.align(Alignment.TopStart).padding(12.dp).size(64.dp).clip(CircleShape).background(Color.White).border(6.dp, RED, CircleShape), contentAlignment = Alignment.Center) {
+                            Tx((limit ?: 0).toString(), 24, Color(0xFF101417), cond = true)
+                        }
+                    }
+                    Row(Modifier.align(Alignment.BottomEnd).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MapBtn(s(if (big == 2) R.string.drive_smaller else R.string.drive_bigger), { big = if (big == 2) 0 else 2 }) { c ->
+                            val w = size.width
+                            val k = w * 0.32f
+                            listOf(0f to 0f, w to 0f, 0f to w, w to w).forEach { (x, y) ->
+                                drawLine(c, Offset(x, y), Offset(if (x == 0f) k else w - k, y), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                                drawLine(c, Offset(x, y), Offset(x, if (y == 0f) k else w - k), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
                             }
                         }
-                        if (rt != null && remM != null) {
-                            val base = if (rt.metres > 0) rt.secs / rt.metres else 0.0
-                            var remS = remM * base
-                            if (avgSp > 4f) remS = 0.5 * remS + 0.5 * (remM / avgSp)
-                            val etaMs = now + (remS * 1000).toLong()
-                            val mins = (remS / 60).roundToInt()
-                            val free = (rt.secs - rt.delay).coerceAtLeast(1.0)
-                            val ratio = rt.delay / free
-                            val dm = (rt.delay / 60).roundToInt()
-                            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(CARD).border(1.dp, LINE, RoundedCornerShape(18.dp)).padding(14.dp)) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                                    Cell(s(R.string.drive_eta), java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(Date(etaMs)))
-                                    Cell(s(R.string.drive_left), if (mins < 60) ctx.getString(R.string.drive_min, mins) else ctx.getString(R.string.dur_hm, mins / 60, mins % 60), align = Alignment.CenterHorizontally)
-                                    Cell(s(R.string.distance), distanceText(ctx, remM), align = Alignment.End)
-                                }
-                                if (big != 1) {
-                                    Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        val heavy = rt.live && ratio >= 0.2
-                                        val mod = rt.live && ratio in 0.05..0.2
-                                        Box(Modifier.size(10.dp).clip(CircleShape).background(if (heavy) RED else if (mod) AMBER else if (rt.live) GREY else OFF))
-                                        Spacer(Modifier.width(8.dp))
-                                        Tx(
-                                            if (!rt.live) s(R.string.drive_nolive) else if (heavy) ctx.getString(R.string.drive_heavy_adds, dm) else if (mod) ctx.getString(R.string.drive_mod_adds, dm) else s(R.string.drive_clear_ahead),
-                                            16, INK,
-                                        )
+                        MapBtn(s(R.string.drive_recenter), { follow = true }) { c ->
+                            val m = Offset(size.width / 2, size.height / 2)
+                            drawCircle(if (follow) LIME else c, size.width * 0.17f, m, style = Stroke(2.dp.toPx()))
+                            listOf(0f to -1f, 0f to 1f, -1f to 0f, 1f to 0f).forEach { (dx, dy) ->
+                                drawLine(c, Offset(m.x + dx * size.width * 0.3f, m.y + dy * size.width * 0.3f), Offset(m.x + dx * size.width * 0.48f, m.y + dy * size.width * 0.48f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
+                            }
+                        }
+                    }
+                    // Suggestions (or recent places) cover the map while you type.
+                    val list = if (query.trim().length < 2) recents else sugs
+                    if (focused) {
+                        Column(Modifier.fillMaxSize().background(BG).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+                            if (query.trim().length < 2 && list.isNotEmpty()) Tx(s(R.string.drive_recent), 16, GREY, modifier = Modifier.padding(top = 12.dp))
+                            list.forEach { sg ->
+                                Row(Modifier.fillMaxWidth().clickable { unfocus(); choose(PlaceInfo(sg.main, sg.sub, sg.lat, sg.lon)) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Tx(sg.main, 16, INK, maxLines = 1)
+                                        if (sg.sub.isNotEmpty()) Tx(sg.sub, 16, GREY, maxLines = 1)
                                     }
+                                    if (sg.metres > 0) Tx(distanceText(ctx, sg.metres.toDouble()), 16, GREY, modifier = Modifier.padding(start = 8.dp))
                                 }
-                                if (big == 2) {
-                                    Column(Modifier.padding(top = 12.dp).fillMaxWidth().border(0.dp, Color.Transparent), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Box(Modifier.fillMaxWidth().height(1.dp).background(LINE))
-                                        incidents.forEach { inc ->
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Box(Modifier.size(10.dp).clip(CircleShape).background(AMBER))
-                                                Spacer(Modifier.width(8.dp))
-                                                val dd = if (fix != null) distanceText(ctx, metresBetween(fix.lat, fix.lon, inc.lat, inc.lon)) else ""
-                                                Tx(ctx.getString(R.string.drive_incident_away, inc.text, dd), 16, INK, maxLines = 1)
-                                            }
-                                        }
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            val a2 = alt
-                                            Box(
-                                                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(12.dp)).background(if (!useAlt) LIME else FIELD).clickable { useAlt = false },
-                                                contentAlignment = Alignment.Center,
-                                            ) { Tx(ctx.getString(R.string.drive_fastest, ((route?.secs ?: 0.0) / 60).roundToInt()), 16, if (!useAlt) ONACC else INK, maxLines = 1) }
-                                            Box(
-                                                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(12.dp)).background(if (useAlt) LIME else FIELD).clickable { if (a2 != null) useAlt = true },
-                                                contentAlignment = Alignment.Center,
-                                            ) { Tx(if (a2 != null) ctx.getString(R.string.drive_avoid, (a2.secs / 60).roundToInt()) else s(R.string.drive_avoid_none), 16, if (useAlt) ONACC else INK, maxLines = 1) }
-                                        }
-                                    }
+                                Box(Modifier.fillMaxWidth().height(1.dp).background(LINE))
+                            }
+                        }
+                    }
+                }
+                if (status.isNotEmpty()) Tx(status, 16, AMBER)
+
+                // ---------------- speed and heading (double-tap to enlarge) ----------------
+                Row(
+                    (if (big == 1) Modifier.weight(1f) else Modifier).fillMaxWidth().pointerInput(Unit) { detectTapGestures(onDoubleTap = { big = if (big == 1) 0 else 1 }) },
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Tx(kmh.roundToInt().toString(), if (big == 1) 150 else if (stage in 1..2 || big == 2) 64 else 104, if (over) RED else INK, cond = true, maxLines = 1)
+                    Tx(s(if (live || !granted) R.string.kmh_unit else R.string.drive_waiting), 16, GREY, modifier = Modifier.padding(start = 8.dp, bottom = 14.dp).weight(1f), maxLines = 1)
+                    Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(bottom = 10.dp)) {
+                        Tx(CARDS[(((nb + 22.5f) / 45f).toInt()) % 8], 28, INK, cond = true)
+                        Tx(String.format(Locale.US, "%d°", nb.roundToInt() % 360), 16, GREY)
+                    }
+                }
+
+                // ---------------- below: place card, route preview, or trip figures ----------------
+                val p = place
+                if (stage == 1 && p != null) {
+                    Column(Modifier.fillMaxWidth().clip(SQ).background(FIELD).padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Tx(p.name, 22, INK, cond = true, maxLines = 2)
+                        if (p.addr.isNotEmpty()) Tx(p.addr, 16, GREY, maxLines = 2)
+                        if (fix != null) Tx(distanceText(ctx, metresBetween(fix.lat, fix.lon, p.lat, p.lon)), 16, GREY)
+                        Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Btn(s(R.string.drive_directions), true, Modifier.weight(1f)) { stage = 2; fetch() }
+                            Btn(s(R.string.drive_gmaps), false, Modifier.weight(1f)) { gmaps(p) }
+                        }
+                    }
+                } else if (stage == 2 && p != null) {
+                    Column(Modifier.fillMaxWidth().clip(SQ).background(FIELD).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (routes.isEmpty()) Tx(s(if (busy) R.string.drive_routing else R.string.drive_noroute), 16, INK)
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            routes.forEachIndexed { i, r ->
+                                val on = i == sel
+                                Column(Modifier.clip(SQ).background(if (on) LIME else BG).clickable { sel = i; fit++ }.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                                    Tx(minsText(ctx, r.secs), 22, if (on) ONACC else INK, cond = true)
+                                    Tx(distanceText(ctx, r.metres) + (if (r.live && r.delay >= 60) "  +" + minsText(ctx, r.delay) else ""), 16, if (on) ONACC else GREY, maxLines = 1)
                                 }
                             }
-                        } else if (dest != null) {
-                            Box(Modifier.clip(RoundedCornerShape(14.dp)).background(CARD).padding(12.dp)) { Tx(s(if (busy) R.string.drive_routing else R.string.drive_waiting), 16, INK) }
-                        } else if (big != 1) {
-                            Box(Modifier.clip(RoundedCornerShape(14.dp)).background(CARD).padding(12.dp)) { Tx(s(R.string.drive_hint), 16, GREY) }
                         }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Pill(s(R.string.drive_fastest_word), !tolls) { tolls = false }
+                            Pill(s(R.string.drive_avoid_none), tolls) { tolls = true }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Btn(s(R.string.drive_start), true, Modifier.weight(1f)) {
+                                if (rt != null) { stage = 3; follow = true; big = 0; say(rt.steps.firstOrNull()?.text ?: "") }
+                            }
+                            Btn(s(R.string.drive_gmaps), false, Modifier.weight(1f)) { gmaps(p) }
+                        }
+                    }
+                } else {
+                    if (big != 2) {
+                        val avg = if (Drive.movingMs > 3000) (Drive.tripM / (Drive.movingMs / 1000.0) * 3.6).roundToInt() else 0
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            listOf(s(R.string.drive_avg) to avg.toString(), s(R.string.drive_top) to (Drive.maxMs * 3.6f).roundToInt().toString(), s(R.string.drive_trip) to distanceText(ctx, Drive.tripM)).forEach { (l, v) ->
+                                Column(Modifier.weight(1f).clip(SQ).background(FIELD).padding(horizontal = 14.dp, vertical = 12.dp)) {
+                                    Tx(l, 16, GREY, maxLines = 1)
+                                    Tx(v, 24, INK, cond = true, maxLines = 1)
+                                }
+                            }
+                        }
+                    }
+                    if (stage == 3 && rt != null && prog != null) {
+                        val base = if (rt.metres > 0) rt.secs / rt.metres else 0.0
+                        var remS = prog.rem * base
+                        if (avgSp > 4f) remS = 0.5 * remS + 0.5 * (prog.rem / avgSp)
+                        val free = (rt.secs - rt.delay).coerceAtLeast(1.0)
+                        val ratio = rt.delay / free
+                        val dm = (rt.delay / 60).roundToInt()
+                        Row(Modifier.fillMaxWidth().clip(SQ).background(LIME).padding(horizontal = 18.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Tx(java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(Date(now + (remS * 1000).toLong())), 24, ONACC, cond = true)
+                                Tx(s(R.string.drive_arrive_word), 16, ONACC)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Tx(minsText(ctx, remS) + "  /  " + distanceText(ctx, prog.rem), 18, ONACC, maxLines = 1)
+                                Tx(
+                                    if (!rt.live) s(R.string.drive_nolive) else if (ratio >= 0.2) ctx.getString(R.string.drive_heavy_adds, dm) else if (ratio >= 0.05) ctx.getString(R.string.drive_mod_adds, dm) else s(R.string.drive_clear_ahead),
+                                    16, ONACC, maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (stage == 3) {
+                            Pill(s(R.string.drive_exit), true) { goBack() }
+                            Pill(s(if (mute) R.string.drive_unmute else R.string.drive_mute)) { mute = !mute; if (mute) tts[0]?.stop() }
+                            Pill(s(R.string.drive_fastest_word), !tolls) { tolls = false }
+                            Pill(s(R.string.drive_avoid_none), tolls) { tolls = true }
+                            if (p != null) Pill(s(R.string.drive_gmaps)) { gmaps(p) }
+                        }
+                        Pill(s(R.string.drive_reset)) { Drive.resetTrip() }
+                        Pill(s(R.string.drive_settings)) { showSet = true }
+                        if (stage != 3) Pill(s(R.string.close)) { onClose() }
                     }
                 }
             }
 
             // ---------------- settings ----------------
-            AnimatedVisibility(showSet, Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 64.dp, start = 18.dp, end = 18.dp)) {
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(FIELD).border(1.dp, LINE, RoundedCornerShape(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AnimatedVisibility(showSet, Modifier.align(Alignment.Center).padding(horizontal = 20.dp)) {
+                Column(Modifier.fillMaxWidth().clip(SQ).background(FIELD).border(2.dp, LINE, SQ).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (!granted) {
                         Tx(s(R.string.drive_no_perm), 16, AMBER)
-                        Box(Modifier.clip(RoundedCornerShape(12.dp)).background(LIME).clickable { ask.launch(Manifest.permission.ACCESS_FINE_LOCATION) }.padding(horizontal = 16.dp, vertical = 10.dp)) { Tx(s(R.string.allow_btn), 16, ONACC) }
+                        Pill(s(R.string.allow_btn), true) { ask.launch(Manifest.permission.ACCESS_FINE_LOCATION) }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Tx(s(R.string.drive_auto), 16, INK, modifier = Modifier.weight(1f))
                         Switch(checked = auto, onCheckedChange = { auto = it; Drive.setAuto(ctx, it) })
                     }
-                    if (!canFs) {
-                        Row(Modifier.clickable {
+                    if (!canFs) Tx(
+                        s(R.string.drive_lock_perm), 16, LIME,
+                        modifier = Modifier.fillMaxWidth().clickable {
                             if (android.os.Build.VERSION.SDK_INT >= 34) ctx.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                        }, verticalAlignment = Alignment.CenterVertically) {
-                            Tx(s(R.string.drive_lock_perm), 16, LIME, modifier = Modifier.weight(1f).padding(vertical = 6.dp))
-                        }
-                    }
-                    if (!canOver) {
-                        Tx(
-                            s(R.string.drive_overlay), 16, LIME,
-                            modifier = Modifier.fillMaxWidth().clickable { ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.padding(vertical = 6.dp),
-                        )
-                    }
-                    OutlinedTextField(
-                        value = key, onValueChange = { key = it; Drive.setKey(ctx, it) }, singleLine = true,
-                        label = { Text(s(R.string.drive_key)) }, modifier = Modifier.fillMaxWidth(),
+                        }.padding(vertical = 8.dp),
                     )
+                    if (!canOver) Tx(
+                        s(R.string.drive_overlay), 16, LIME,
+                        modifier = Modifier.fillMaxWidth().clickable { ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.padding(vertical = 8.dp),
+                    )
+                    OutlinedTextField(value = key, onValueChange = { key = it; Drive.setKey(ctx, it) }, singleLine = true, label = { Text(s(R.string.drive_key)) }, modifier = Modifier.fillMaxWidth())
                     Tx(s(R.string.drive_key_hint), 16, GREY)
-                    Tx(s(R.string.drive_reset), 16, LIME, modifier = Modifier.clickable { Drive.resetTrip() }.padding(vertical = 6.dp))
+                    Pill(s(R.string.close), true) { showSet = false }
                 }
             }
         }
@@ -638,17 +656,17 @@ private class TomTomFlow(val key: String, name: String) : OnlineTileSourceBase(n
         baseUrl + "traffic/map/4/tile/flow/relative0/" + MapTileIndex.getZoom(pMapTileIndex) + "/" + MapTileIndex.getX(pMapTileIndex) + "/" + MapTileIndex.getY(pMapTileIndex) + ".png?key=" + key
 }
 
-/** Map below the speedometer: follows the car, long-press sets a destination, double-tap enlarges it. */
+/** The drive map: follows the car, turns heading-up while navigating, press and hold to drop a destination. */
 @Composable
 private fun DriveMap(
-    fix: Drive.Fix?, route: Route?, dest: Hit?, trafficKey: String, follow: Boolean, fit: Int,
-    onFollow: (Boolean) -> Unit, onPick: (Double, Double) -> Unit, onDouble: () -> Unit, modifier: Modifier,
+    fix: Drive.Fix?, routes: List<Route>, sel: Int, show: Boolean, dest: PlaceInfo?, trafficKey: String, nav: Boolean, follow: Boolean, fit: Int,
+    onFollow: (Boolean) -> Unit, onPick: (Double, Double) -> Unit, modifier: Modifier,
 ) {
     val ctx = LocalContext.current
     val pick by rememberUpdatedState(onPick)
-    val dbl by rememberUpdatedState(onDouble)
     val fol by rememberUpdatedState(onFollow)
     val folNow by rememberUpdatedState(follow)
+    val navNow by rememberUpdatedState(nav)
     val accent = LIME.toArgb()
     val dark = pal.dark
     val car = remember(dark) { CarOverlay(ctx.resources.displayMetrics.density, accent, if (dark) 0xFF101417.toInt() else 0xFFFFFFFF.toInt()) }
@@ -684,6 +702,7 @@ private fun DriveMap(
     val t = remember { Animatable(1f) }
     var curLa by remember { mutableFloatStateOf(0f) }
     var curLo by remember { mutableFloatStateOf(0f) }
+    var curBr by remember { mutableFloatStateOf(0f) }
     var curSet by remember { mutableStateOf(false) }
     LaunchedEffect(fix) {
         val f = fix ?: return@LaunchedEffect
@@ -691,30 +710,42 @@ private fun DriveMap(
         car.bearing = f.bearing
         val fromLa = if (curSet) curLa.toDouble() else f.lat
         val fromLo = if (curSet) curLo.toDouble() else f.lon
+        val fromBr = curBr
+        val turn = ((f.bearing - fromBr + 540f) % 360f) - 180f
         val firstFix = !curSet
         curSet = true
         t.snapTo(0f)
         t.animateTo(1f, tween(900, easing = LinearEasing)) {
             val la = fromLa + (f.lat - fromLa) * value
             val lo = fromLo + (f.lon - fromLo) * value
-            curLa = la.toFloat(); curLo = lo.toFloat()
+            curLa = la.toFloat(); curLo = lo.toFloat(); curBr = fromBr + turn * value
             car.lat = la; car.lon = lo
             if (folNow || firstFix) map.controller.setCenter(GeoPoint(la, lo))
+            // Heading-up while navigating: the road ahead points to the top.
+            if (navNow && folNow) map.mapOrientation = -curBr
             map.invalidate()
         }
-        curLa = f.lat.toFloat(); curLo = f.lon.toFloat()
+        curLa = f.lat.toFloat(); curLo = f.lon.toFloat(); curBr = f.bearing
     }
     LaunchedEffect(follow) {
         if (follow && curSet) map.controller.setCenter(GeoPoint(car.lat, car.lon))
+        if (!follow) { map.mapOrientation = 0f; map.invalidate() }
+    }
+    LaunchedEffect(nav) {
+        if (nav) map.controller.setZoom(17.5) else { map.mapOrientation = 0f; map.invalidate() }
     }
     LaunchedEffect(fit) {
-        val r = route
-        if (fit > 0 && r != null && r.lat.size > 1) {
+        if (fit == 0) return@LaunchedEffect
+        val r = routes.getOrNull(sel)
+        if (r != null && r.lat.size > 1 && show) {
             val pts = r.lat.indices.map { GeoPoint(r.lat[it], r.lon[it]) } + (fix?.let { listOf(GeoPoint(it.lat, it.lon)) } ?: emptyList())
             map.zoomToBoundingBox(BoundingBox.fromGeoPoints(pts), true, (48 * ctx.resources.displayMetrics.density).toInt())
+        } else if (dest != null) {
+            map.controller.setZoom(16.0)
+            map.controller.animateTo(GeoPoint(dest.lat, dest.lon))
         }
     }
-    val key = "$dark/${route?.hashCode()}/${dest?.hashCode()}/$trafficKey/$accent"
+    val key = "$dark/${routes.hashCode()}/$sel/$show/$nav/${dest?.hashCode()}/$trafficKey"
     AndroidView({ map }, modifier) { m ->
         if (m.tag == key) return@AndroidView
         m.tag = key
@@ -724,11 +755,6 @@ private fun DriveMap(
         m.overlays.clear()
         m.overlays.add(object : Overlay() {
             override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {}
-            override fun onDoubleTap(e: MotionEvent, mapView: MapView): Boolean {
-                dbl()
-                return true
-            }
-
             override fun onLongPress(e: MotionEvent, mapView: MapView): Boolean {
                 val g = mapView.projection.fromPixels(e.x.toInt(), e.y.toInt())
                 pick(g.latitude, g.longitude)
@@ -744,20 +770,21 @@ private fun DriveMap(
             m.overlays.add(ov)
             holder.traffic = ov
         }
-        if (route != null && route.lat.size > 1) {
-            val pts = route.lat.indices.map { GeoPoint(route.lat[it], route.lon[it]) }
-            m.overlays.add(Polyline().apply {
-                setPoints(pts)
-                outlinePaint.color = if (dark) 0xCC101417.toInt() else 0xCCFFFFFF.toInt()
-                outlinePaint.strokeWidth = 22f
+        if (show) {
+            fun line(r: Route, color: Int, width: Float) = Polyline().apply {
+                setPoints(r.lat.indices.map { GeoPoint(r.lat[it], r.lon[it]) })
+                outlinePaint.color = color
+                outlinePaint.strokeWidth = width
                 outlinePaint.strokeCap = Paint.Cap.ROUND
-            })
-            m.overlays.add(Polyline().apply {
-                setPoints(pts)
-                outlinePaint.color = accent
-                outlinePaint.strokeWidth = 10f
-                outlinePaint.strokeCap = Paint.Cap.ROUND
-            })
+            }
+            // Other routes in grey underneath, the chosen one in the accent on top.
+            if (!nav) routes.forEachIndexed { i, r -> if (i != sel && r.lat.size > 1) m.overlays.add(line(r, 0xFF8A9096.toInt(), 12f)) }
+            routes.getOrNull(sel)?.let { r ->
+                if (r.lat.size > 1) {
+                    m.overlays.add(line(r, if (dark) 0xCC101417.toInt() else 0xCCFFFFFF.toInt(), 22f))
+                    m.overlays.add(line(r, accent, 10f))
+                }
+            }
         }
         if (dest != null) m.overlays.add(PinOverlay(GeoPoint(dest.lat, dest.lon), m.resources.displayMetrics.density, if (dark) 0xFFF4F1EA.toInt() else 0xFF101417.toInt(), if (dark) 0xFF101417.toInt() else 0xFFF4F1EA.toInt()))
         m.overlays.add(car)
@@ -784,7 +811,7 @@ private class CarOverlay(val density: Float, accent: Int, ringColor: Int) : Over
         c.drawCircle(0f, 0f, 30f * density, halo)
         c.drawCircle(0f, 0f, 18f * density, dark)
         c.drawCircle(0f, 0f, 14f * density, fill)
-        c.rotate(bearing - osmv.mapOrientation)
+        c.rotate(bearing)   // the canvas already turns with the map
         val arrow = Path().apply {
             moveTo(0f, -9f * density); lineTo(8f * density, 8f * density); lineTo(0f, 4f * density); lineTo(-8f * density, 8f * density); close()
         }

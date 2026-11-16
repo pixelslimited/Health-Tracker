@@ -45,6 +45,23 @@ object Drive {
     fun key(c: Context): String = c.getSharedPreferences("drive", 0).getString("tt", "") ?: ""
     fun setKey(c: Context, k: String) = c.getSharedPreferences("drive", 0).edit().putString("tt", k.trim()).apply()
 
+    /** Places you searched for lately, newest first ("name, address, lat, lon" per line). */
+    fun recents(c: Context): List<Sug> = (c.getSharedPreferences("drive", 0).getString("recent", "") ?: "").split("\n").mapNotNull {
+        val p = it.split("\t")
+        val la = p.getOrNull(2)?.toDoubleOrNull()
+        val lo = p.getOrNull(3)?.toDoubleOrNull()
+        if (p.size == 4 && la != null && lo != null) Sug("", p[0], p[1], 0, la, lo) else null
+    }
+
+    fun addRecent(c: Context, p: PlaceInfo) {
+        fun clean(x: String) = x.replace("\t", " ").replace("\n", " ")
+        val sp = c.getSharedPreferences("drive", 0)
+        val name = clean(p.name)
+        val line = name + "\t" + clean(p.addr) + "\t" + p.lat + "\t" + p.lon
+        val old = (sp.getString("recent", "") ?: "").split("\n").filter { it.isNotEmpty() && !it.startsWith(name + "\t") }
+        sp.edit().putString("recent", (listOf(line) + old).take(8).joinToString("\n")).apply()
+    }
+
     fun openManual() { armed = false; open = true }
     fun dismiss() { armed = false; open = false }
 
