@@ -51,6 +51,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
@@ -77,6 +78,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
@@ -129,17 +131,24 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-// Drive mode palette: always dark, one lime accent.
-private val BG = Color(0xFF0D1013)
-private val CARD = Color(0xFF171C21)
-private val MAPBG = Color(0xFF11161A)
-private val FIELD = Color(0xFF1E2429)
-private val LINE = Color(0xFF2A3138)
-private val OFF = Color(0xFF3A444C)
-private val GREY = Color(0xFF9AA5AD)
-private val INK = Color(0xFFEEF1F3)
-private val LIME = Color(0xFFC8F031)
-private val RED = Color(0xFFFF5A4F)
+// Drive mode uses the app's own scheme: ink and paper base tones, one red accent, in light and dark.
+private class Pal(val dark: Boolean, val bg: Color, val card: Color, val field: Color, val line: Color, val off: Color, val grey: Color, val ink: Color, val accent: Color)
+
+private val DarkPal = Pal(true, Color(0xFF101417), Color(0xFF1B2226), Color(0xFF232B30), Color(0xFF2E373D), Color(0xFF3A444C), Color(0xFFA9B0B5), Color(0xFFF4F1EA), Color(0xFFE5484D))
+private val LightPal = Pal(false, Color(0xFFF4F1EA), Color(0xFFE7E3D9), Color(0xFFF4F1EA), Color(0xFFCFCBC0), Color(0xFFCFCBC0), Color(0xFF555D62), Color(0xFF101417), Color(0xFFC62F35))
+private var pal by mutableStateOf(DarkPal)
+
+private val BG get() = pal.bg
+private val CARD get() = pal.card
+private val MAPBG get() = pal.card
+private val FIELD get() = pal.field
+private val LINE get() = pal.line
+private val OFF get() = pal.off
+private val GREY get() = pal.grey
+private val INK get() = pal.ink
+private val LIME get() = pal.accent      // the accent
+private val RED get() = pal.accent
+private val ONACC = Color(0xFFF4F1EA)    // text on the accent
 private val AMBER = Color(0xFFFFB020)
 
 private val INTER = FontFamily(Font(R.font.inter_regular), Font(R.font.inter_semibold, FontWeight.SemiBold))
@@ -169,6 +178,8 @@ fun DriveScreen(onClose: () -> Unit) {
     val app = ctx.applicationContext
     val scope = rememberCoroutineScope()
     val kb = LocalSoftwareKeyboardController.current
+    val want = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) DarkPal else LightPal
+    if (pal !== want) pal = want
 
     var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
@@ -342,8 +353,8 @@ fun DriveScreen(onClose: () -> Unit) {
                         Tx(s(R.string.close), 16, LIME, modifier = Modifier.clickable { onClose() }.padding(horizontal = 10.dp, vertical = 10.dp))
                         if (limit != null) {
                             Spacer(Modifier.width(6.dp))
-                            Box(Modifier.size(40.dp).clip(CircleShape).background(INK).border(3.dp, RED, CircleShape), contentAlignment = Alignment.Center) {
-                                Tx((limit ?: 0).toString(), 20, BG, cond = true)
+                            Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White).border(3.dp, RED, CircleShape), contentAlignment = Alignment.Center) {
+                                Tx((limit ?: 0).toString(), 20, Color(0xFF101417), cond = true)
                             }
                         }
                     }
@@ -415,7 +426,7 @@ fun DriveScreen(onClose: () -> Unit) {
                                 val x = cx + (d - hdgA) * 4.dp.toPx()
                                 val nm = NAMES[n]
                                 val hgt = (if (nm != null) 14 else if (n % 15 == 0) 10 else 6).dp.toPx()
-                                drawLine(if (nm != null) INK else Color(0xFF5A6670), Offset(x, 12.dp.toPx()), Offset(x, 12.dp.toPx() + hgt), strokeWidth = 2.dp.toPx())
+                                drawLine(if (nm != null) INK else GREY.copy(alpha = 0.6f), Offset(x, 12.dp.toPx()), Offset(x, 12.dp.toPx() + hgt), strokeWidth = 2.dp.toPx())
                                 if (nm != null) drawContext.canvas.nativeCanvas.drawText(nm, x, 12.dp.toPx() + hgt + 16.dp.toPx(), tapePaint)
                                 d += 5
                             }
@@ -520,7 +531,7 @@ fun DriveScreen(onClose: () -> Unit) {
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (!follow) {
                             Box(Modifier.align(Alignment.End).height(40.dp).clip(RoundedCornerShape(20.dp)).background(LIME).clickable { follow = true }.padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
-                                Tx(s(R.string.drive_recenter), 16, BG)
+                                Tx(s(R.string.drive_recenter), 16, ONACC)
                             }
                         }
                         if (rt != null && remM != null) {
@@ -542,7 +553,7 @@ fun DriveScreen(onClose: () -> Unit) {
                                     Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                                         val heavy = rt.live && ratio >= 0.2
                                         val mod = rt.live && ratio in 0.05..0.2
-                                        Box(Modifier.size(10.dp).clip(CircleShape).background(if (heavy) RED else if (mod) AMBER else if (rt.live) LIME else OFF))
+                                        Box(Modifier.size(10.dp).clip(CircleShape).background(if (heavy) RED else if (mod) AMBER else if (rt.live) GREY else OFF))
                                         Spacer(Modifier.width(8.dp))
                                         Tx(
                                             if (!rt.live) s(R.string.drive_nolive) else if (heavy) ctx.getString(R.string.drive_heavy_adds, dm) else if (mod) ctx.getString(R.string.drive_mod_adds, dm) else s(R.string.drive_clear_ahead),
@@ -564,13 +575,13 @@ fun DriveScreen(onClose: () -> Unit) {
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             val a2 = alt
                                             Box(
-                                                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(12.dp)).background(if (!useAlt) LIME else Color(0xFF262D33)).clickable { useAlt = false },
+                                                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(12.dp)).background(if (!useAlt) LIME else FIELD).clickable { useAlt = false },
                                                 contentAlignment = Alignment.Center,
-                                            ) { Tx(ctx.getString(R.string.drive_fastest, ((route?.secs ?: 0.0) / 60).roundToInt()), 16, if (!useAlt) BG else INK, maxLines = 1) }
+                                            ) { Tx(ctx.getString(R.string.drive_fastest, ((route?.secs ?: 0.0) / 60).roundToInt()), 16, if (!useAlt) ONACC else INK, maxLines = 1) }
                                             Box(
-                                                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(12.dp)).background(if (useAlt) LIME else Color(0xFF262D33)).clickable { if (a2 != null) useAlt = true },
+                                                Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(12.dp)).background(if (useAlt) LIME else FIELD).clickable { if (a2 != null) useAlt = true },
                                                 contentAlignment = Alignment.Center,
-                                            ) { Tx(if (a2 != null) ctx.getString(R.string.drive_avoid, (a2.secs / 60).roundToInt()) else s(R.string.drive_avoid_none), 16, if (useAlt) BG else INK, maxLines = 1) }
+                                            ) { Tx(if (a2 != null) ctx.getString(R.string.drive_avoid, (a2.secs / 60).roundToInt()) else s(R.string.drive_avoid_none), 16, if (useAlt) ONACC else INK, maxLines = 1) }
                                         }
                                     }
                                 }
@@ -589,7 +600,7 @@ fun DriveScreen(onClose: () -> Unit) {
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(FIELD).border(1.dp, LINE, RoundedCornerShape(18.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (!granted) {
                         Tx(s(R.string.drive_no_perm), 16, AMBER)
-                        Box(Modifier.clip(RoundedCornerShape(12.dp)).background(LIME).clickable { ask.launch(Manifest.permission.ACCESS_FINE_LOCATION) }.padding(horizontal = 16.dp, vertical = 10.dp)) { Tx(s(R.string.allow_btn), 16, BG) }
+                        Box(Modifier.clip(RoundedCornerShape(12.dp)).background(LIME).clickable { ask.launch(Manifest.permission.ACCESS_FINE_LOCATION) }.padding(horizontal = 16.dp, vertical = 10.dp)) { Tx(s(R.string.allow_btn), 16, ONACC) }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Tx(s(R.string.drive_auto), 16, INK, modifier = Modifier.weight(1f))
@@ -639,8 +650,8 @@ private fun DriveMap(
     val fol by rememberUpdatedState(onFollow)
     val folNow by rememberUpdatedState(follow)
     val accent = LIME.toArgb()
-    val dark = true
-    val car = remember { CarOverlay(ctx.resources.displayMetrics.density) }
+    val dark = pal.dark
+    val car = remember(dark) { CarOverlay(ctx.resources.displayMetrics.density, accent, if (dark) 0xFF101417.toInt() else 0xFFFFFFFF.toInt()) }
     val holder = remember { Holder() }
     val map = remember {
         Configuration.getInstance().apply {
@@ -737,7 +748,7 @@ private fun DriveMap(
             val pts = route.lat.indices.map { GeoPoint(route.lat[it], route.lon[it]) }
             m.overlays.add(Polyline().apply {
                 setPoints(pts)
-                outlinePaint.color = 0xCC0D1013.toInt()
+                outlinePaint.color = if (dark) 0xCC101417.toInt() else 0xCCFFFFFF.toInt()
                 outlinePaint.strokeWidth = 22f
                 outlinePaint.strokeCap = Paint.Cap.ROUND
             })
@@ -748,20 +759,21 @@ private fun DriveMap(
                 outlinePaint.strokeCap = Paint.Cap.ROUND
             })
         }
-        if (dest != null) m.overlays.add(PinOverlay(GeoPoint(dest.lat, dest.lon), m.resources.displayMetrics.density))
+        if (dest != null) m.overlays.add(PinOverlay(GeoPoint(dest.lat, dest.lon), m.resources.displayMetrics.density, if (dark) 0xFFF4F1EA.toInt() else 0xFF101417.toInt(), if (dark) 0xFF101417.toInt() else 0xFFF4F1EA.toInt()))
         m.overlays.add(car)
         m.invalidate()
     }
 }
 
-private class CarOverlay(val density: Float) : Overlay() {
+private class CarOverlay(val density: Float, accent: Int, ringColor: Int) : Overlay() {
     var lat = 0.0
     var lon = 0.0
     var bearing = 0f
     var show = false
-    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33C8F031 }
-    private val dark = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0D1013.toInt() }
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC8F031.toInt() }
+    private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = (accent and 0x00FFFFFF) or 0x33000000 }
+    private val dark = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ringColor }
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accent }
+    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF4F1EA.toInt() }
 
     override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {
         if (shadow || !show) return
@@ -776,14 +788,14 @@ private class CarOverlay(val density: Float) : Overlay() {
         val arrow = Path().apply {
             moveTo(0f, -9f * density); lineTo(8f * density, 8f * density); lineTo(0f, 4f * density); lineTo(-8f * density, 8f * density); close()
         }
-        c.drawPath(arrow, dark)
+        c.drawPath(arrow, arrowPaint)
         c.restore()
     }
 }
 
-private class PinOverlay(val p: GeoPoint, val density: Float) : Overlay() {
-    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFEEF1F3.toInt() }
-    private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0D1013.toInt() }
+private class PinOverlay(val p: GeoPoint, val density: Float, ringColor: Int, dotColor: Int) : Overlay() {
+    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ringColor }
+    private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = dotColor }
 
     override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {
         if (shadow) return
