@@ -127,13 +127,13 @@ fun OutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: 
 
 /** Goal progress as ten blocks. */
 @Composable
-fun SegBar(fraction: Float, segments: Int = 10) {
+fun SegBar(fraction: Float, segments: Int = 10, accent: Boolean = true) {
     val f by androidx.compose.animation.core.animateFloatAsState(fraction.coerceIn(0f, 1f), androidx.compose.animation.core.tween(800), label = "seg")
     Row(Modifier.fillMaxWidth().height(14.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         repeat(segments) { i ->
             val part = (f * segments - i).coerceIn(0f, 1f)
             Box(Modifier.weight(1f).fillMaxHeight().background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f))) {
-                Box(Modifier.fillMaxHeight().fillMaxWidth(part).background(MaterialTheme.colorScheme.primary))
+                Box(Modifier.fillMaxHeight().fillMaxWidth(part).background(if (accent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface))
             }
         }
     }

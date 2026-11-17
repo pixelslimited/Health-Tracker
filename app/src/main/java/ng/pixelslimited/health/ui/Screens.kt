@@ -151,7 +151,7 @@ fun AppRoot() {
             Modifier.fillMaxSize().imePadding().fadeEdges(false, scroll.canScrollBackward, scroll.canScrollForward, 28.dp).verticalScroll(scroll)
                 .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp).fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (page.isNotEmpty()) {
                 Column {
@@ -394,7 +394,7 @@ fun Reports(me: Profile) {
     fun avg(list: List<Double>): String = if (list.isEmpty()) ctx.getString(R.string.none) else String.format(Locale.US, "%.0f", list.average())
     val bp = me.since(T.BP, from)
     val sleep = me.since(T.SLEEP, from)
-    Block {
+    Block(hero = true) {
         Text(s(R.string.last_7_days), style = MaterialTheme.typography.titleMedium)
         Stat(s(R.string.avg_steps), days.average().toInt().toString())
         Stat(s(R.string.distance), distanceText(ctx, me.metres(days.sum())))

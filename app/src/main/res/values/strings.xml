@@ -403,4 +403,5 @@
     <string name="nav_merge">Merge</string>
     <string name="nav_ramp">Take the ramp</string>
     <string name="nav_onto">%1$s onto %2$s</string>
+    <string name="today_summary">Today so far</string>
 </resources>

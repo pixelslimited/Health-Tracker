@@ -107,7 +107,11 @@ fun Seg(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {
 private fun Label(t: String) = Text(t, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
 
 @Composable
-private fun Big(t: String, size: Int = 26) = Text(t, style = MaterialTheme.typography.titleLarge.copy(fontSize = size.sp, lineHeight = (size + 4).sp, fontWeight = FontWeight.Black, fontFeatureSettings = "tnum"), maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun Big(t: String, size: Int = 24) = Text(t, style = MaterialTheme.typography.titleLarge.copy(fontSize = size.sp, lineHeight = (size + 4).sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"), maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+/** Section heading: the step between a page title and a card label. */
+@Composable
+private fun Heading(t: String) = Text(t, Modifier.padding(top = 10.dp), style = MaterialTheme.typography.titleMedium)
 
 @Composable
 private fun Rule() = Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
@@ -142,7 +146,7 @@ fun StepsCard(me: Profile, hourly: Boolean, onClick: (() -> Unit)? = null) {
             Button(onClick = { ask.launch(StepService.perms()) }) { Text(s(R.string.enable)) }
         }
     }
-    Block(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier, fill = steps.toFloat() / me.dailyGoal.coerceAtLeast(1)) {
+    Block(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier, fill = steps.toFloat() / me.dailyGoal.coerceAtLeast(1), hero = true) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(s(R.string.steps), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Text(String.format(Locale.getDefault(), "%d%%", (steps * 100L / me.dailyGoal.coerceAtLeast(1)).toInt()), style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"))
@@ -167,8 +171,8 @@ fun StepsCard(me: Profile, hourly: Boolean, onClick: (() -> Unit)? = null) {
 private fun HomeTile(label: String, value: String, sub: String, frac: Float, segs: Int, modifier: Modifier, onClick: () -> Unit) {
     Block(modifier.clickable(onClick = onClick)) {
         Label(label)
-        Big(value)
-        if (segs > 0) SegBar(frac, segs)
+        Big(value, 22)
+        if (segs > 0) SegBar(frac, segs, accent = false)
         Label(sub)
     }
 }
@@ -184,6 +188,7 @@ fun Home(me: Profile, go: (Int, Int) -> Unit, page: (String) -> Unit) {
     val sleep = me.last(T.SLEEP)
     val meals = me.since(T.MEAL, start)
     val glu = me.last(T.GLU)
+    Heading(s(R.string.today_summary))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeTile(s(R.string.t_water), ctx.getString(R.string.of_n, water / 750, goalB), s(R.string.bottles_word), water / 750f / goalB, goalB.coerceAtMost(8), Modifier.weight(1f)) { go(2, 2) }
         HomeTile(
@@ -202,14 +207,13 @@ fun Home(me: Profile, go: (Int, Int) -> Unit, page: (String) -> Unit) {
     }
     val mins = LocalTime.now().let { it.hour * 60 + it.minute }
     val next = me.reminders.filter { it.on }.minByOrNull { ((it.hour * 60 + it.minute) - mins + 1440) % 1440 }
-    Block(Modifier.clickable { page("reminders") }) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Label(s(R.string.next_reminder))
-                Text(next?.label ?: s(R.string.none), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            if (next != null) Big(String.format(Locale.US, "%02d:%02d", next.hour, next.minute))
+    Rule()
+    Row(Modifier.fillMaxWidth().clickable { page("reminders") }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Label(s(R.string.next_reminder))
+            Text(next?.label ?: s(R.string.none), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        if (next != null) Text(String.format(Locale.US, "%02d:%02d", next.hour, next.minute), style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"))
     }
 }
 
@@ -226,19 +230,19 @@ fun StepsPage(me: Profile) {
         Block(Modifier.weight(1f)) { Label(s(R.string.streak)); Big(ctx.getString(R.string.f_days, streak(me, today))) }
         Block(Modifier.weight(1f)) { Label(s(R.string.this_week)); Big(String.format(Locale.getDefault(), "%,d", week.sum())) }
     }
+    Heading(s(R.string.by_hour))
     Block {
-        Text(s(R.string.by_hour), style = MaterialTheme.typography.titleMedium)
         val hrs = me.hoursOf(today)
         HourBars(hrs, LocalTime.now().hour, s(R.string.hourly_desc)) { h ->
             String.format(Locale.US, "%02d:00 - %02d:59", h, h) + "   " + ctx.getString(R.string.steps) + ": " + String.format(Locale.getDefault(), "%,d", hrs[h])
         }
     }
+    Heading(s(R.string.goal_met))
     Block {
-        Text(s(R.string.goal_met), style = MaterialTheme.typography.titleMedium)
         DayStrip(week, me.dailyGoal, dayLabels(), today.dayOfWeek.value - 1, s(R.string.week_desc)) { i ->
             today.with(DayOfWeek.MONDAY).plusDays(i.toLong()).format(DateTimeFormatter.ofPattern("EEE d MMM")) + "   " + ctx.getString(R.string.steps) + ": " + String.format(Locale.getDefault(), "%,d", week[i])
         }
-        SegBar(week.sum().toFloat() / me.weeklyGoal.coerceAtLeast(1))
+        SegBar(week.sum().toFloat() / me.weeklyGoal.coerceAtLeast(1), accent = false)
         Label(ctx.getString(R.string.goal_n, me.weeklyGoal) + "  /  " + distanceText(ctx, me.metres(week.sum())))
     }
 }
@@ -267,15 +271,15 @@ fun WorkoutsPage(me: Profile, save: (Entry) -> Unit) {
         }
     }
     Seg(listOf(s(R.string.level_easy), s(R.string.level_mid), s(R.string.level_hard)), me.fitLevel) { l -> Store.edit { it.copy(fitLevel = l) } }
-    Block {
+    Block(hero = true) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(s(R.string.workout_today), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(ctx.getString(R.string.program_day, day), style = MaterialTheme.typography.titleSmall)
         }
-        SegBar(done.toFloat() / list.size.coerceAtLeast(1), list.size.coerceIn(1, 12))
+        SegBar(done.toFloat() / list.size.coerceAtLeast(1), list.size.coerceIn(1, 12), accent = false)
         if (Workouts.isRecovery(day)) Label(s(R.string.recovery_day))
         Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-            Column { Label(s(R.string.drills)); Big(list.size.toString()) }
+            Column { Label(s(R.string.drills)); Big(list.size.toString(), 28) }
             Column { Label(s(R.string.time_word)); Big(ctx.getString(R.string.drive_min, (list.sumOf { Workouts.allocSeconds(it) } + 30) / 60)) }
             Column { Label(s(R.string.done_today)); Big(done.coerceAtMost(list.size).toString()) }
         }
@@ -311,8 +315,8 @@ private fun VitalCard(
         Row(Modifier.fillMaxWidth().clickable(onClick = onToggle), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Label(title)
-                Big(value)
-                if (status != null) Text(levelText(ctx, status), style = MaterialTheme.typography.titleSmall, color = if (status == Level.OK) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary)
+                Big(value, 26)
+                if (status != null) Text(levelText(ctx, status), style = if (status == Level.OK) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleSmall, color = if (status == Level.OK) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
                 if (extra != null) Label(extra)
             }
             Box(Modifier.width(110.dp)) { Spark(values) }
@@ -412,8 +416,8 @@ fun FoodPage(me: Profile, onAdd: (String) -> Unit, save: (Entry) -> Unit) {
             OutlinedButton(onClick = { onAdd("meal") }, modifier = Modifier.weight(1f)) { Text(s(R.string.add_meal), maxLines = 1) }
         }
     }
+    Heading(s(R.string.meals))
     Block {
-        Text(s(R.string.meals), style = MaterialTheme.typography.titleMedium)
         if (meals.isEmpty()) Label(s(R.string.none))
         meals.forEachIndexed { i, e ->
             if (i > 0) Rule()
@@ -442,7 +446,7 @@ fun FoodPage(me: Profile, onAdd: (String) -> Unit, save: (Entry) -> Unit) {
                 }
             }
         }
-        Button(onClick = { save(Entry(T.WATER, now(), 750.0)) }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.add_glass)) }
+        OutlinedButton(onClick = { save(Entry(T.WATER, now(), 750.0)) }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.add_glass)) }
         TextButton(onClick = { onAdd("water") }, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.other_amount)) }
     }
 }

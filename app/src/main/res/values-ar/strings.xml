@@ -388,4 +388,5 @@
     <string name="nav_merge">اندمج</string>
     <string name="nav_ramp">اسلك المنحدر</string>
     <string name="nav_onto">%1$s إلى %2$s</string>
+    <string name="today_summary">اليوم حتى الآن</string>
 </resources>

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -57,14 +58,15 @@ fun rememberGrow(): Float {
 
 /** Bordered tile on the soft surface. */
 @Composable
-fun Block(modifier: Modifier = Modifier, fill: Float = -1f, content: @Composable ColumnScope.() -> Unit) {
+fun Block(modifier: Modifier = Modifier, fill: Float = -1f, hero: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    // Hierarchy: only the page's main card carries a frame; every other card is a quiet fill.
     Column(
         modifier.fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .topLight(MaterialTheme.colorScheme.background.luminance() < 0.5f)
             .liquid(fill)
-            .border(2.dp, MaterialTheme.colorScheme.outlineVariant)
-            .padding(16.dp),
+            .then(if (hero) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface) else Modifier)
+            .padding(if (hero) 20.dp else 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
@@ -96,7 +98,7 @@ fun Spark(values: List<Float>) {
         fun at(i: Int) = Offset(pad + w * i / (values.size - 1), pad + h - (values[i] - min) / span * h)
         val path = Path()
         values.indices.forEach { i -> if (i == 0) path.moveTo(at(i).x, at(i).y) else path.lineTo(at(i).x, at(i).y) }
-        drawPath(path, ink, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, ink.copy(alpha = 0.45f), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         drawCircle(accent, 4.dp.toPx(), at(values.size - 1))
     }
 }
@@ -286,8 +288,9 @@ fun NavIcon(kind: Int, tint: Color) {
 /** Home, Activity, a solid Add button in the centre, Health, More. The open tab carries the accent. */
 @Composable
 fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (Int) -> Unit, onAdd: () -> Unit) {
-    val on = MaterialTheme.colorScheme.primary
+    val on = MaterialTheme.colorScheme.onSurface
     val mut = MaterialTheme.colorScheme.onSurfaceVariant
+    val plusBg = MaterialTheme.colorScheme.primary
     val plus = MaterialTheme.colorScheme.onPrimary
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.outlineVariant))
@@ -295,7 +298,7 @@ fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (
             for (slot in 0..4) {
                 if (slot == 2) {
                     Box(Modifier.weight(1f).height(76.dp).clickable(onClick = onAdd).semantics { contentDescription = addLabel }, contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(56.dp).background(on), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(56.dp).background(plusBg), contentAlignment = Alignment.Center) {
                             Canvas(Modifier.size(22.dp)) {
                                 val sw = 3.dp.toPx()
                                 drawLine(plus, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth = sw, cap = StrokeCap.Round)
@@ -311,7 +314,8 @@ fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
                     ) {
                         NavIcon(i, tint)
-                        Text(labels[i], style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = tint, maxLines = 1)
+                        Text(labels[i], style = MaterialTheme.typography.labelMedium, fontWeight = if (i == selected) FontWeight.Bold else FontWeight.Normal, color = tint, maxLines = 1)
+                        Box(Modifier.width(20.dp).height(3.dp).background(if (i == selected) on else Color.Transparent))
                     }
                 }
             }
