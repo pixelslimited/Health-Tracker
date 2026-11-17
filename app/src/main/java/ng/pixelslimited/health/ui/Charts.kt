@@ -64,10 +64,10 @@ fun Block(modifier: Modifier = Modifier, fill: Float = -1f, hero: Boolean = fals
     // Hierarchy: only the page's main card carries a frame; every other card is a quiet fill.
     Column(
         modifier.fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.surfaceVariant, CornerCard)
             .topLight(MaterialTheme.colorScheme.background.luminance() < 0.5f)
             .liquid(fill)
-            .then(if (hero) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface) else Modifier)
+            .then(if (hero) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, CornerCard) else Modifier)
             .padding(if (hero) 20.dp else 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
@@ -292,8 +292,8 @@ fun NavIcon(kind: Int, tint: Color) {
 fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (Int) -> Unit, onAdd: () -> Unit) {
     val on = MaterialTheme.colorScheme.onSurface
     val mut = MaterialTheme.colorScheme.onSurfaceVariant
-    val plusBg = MaterialTheme.colorScheme.primaryContainer
-    val plus = MaterialTheme.colorScheme.onPrimaryContainer
+    val plusBg = MaterialTheme.colorScheme.primary
+    val plus = MaterialTheme.colorScheme.onPrimary
     Column(
         Modifier.fillMaxWidth().onGloballyPositioned { Spill.navTop = it.boundsInRoot().top }
             .background(MaterialTheme.colorScheme.background).navigationBarsPadding(),
@@ -303,7 +303,7 @@ fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (
             for (slot in 0..4) {
                 if (slot == 2) {
                     Box(Modifier.weight(1f).height(76.dp).clickable(onClick = onAdd).semantics { contentDescription = addLabel }, contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(56.dp).background(plusBg), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(56.dp).background(plusBg, androidx.compose.foundation.shape.RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
                             Canvas(Modifier.size(22.dp)) {
                                 val sw = 3.dp.toPx()
                                 drawLine(plus, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), strokeWidth = sw, cap = StrokeCap.Round)
@@ -413,8 +413,11 @@ fun Modifier.liquid(level: Float): Modifier {
             p.close()
             return p
         }
-        drawPath(surface(1f - b, 1.2f, amp * 0.8f), lemon.copy(alpha = 0.22f))
-        drawPath(surface(a, 1.6f, amp), lemon.copy(alpha = 0.34f))
+        val card = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, size.width, size.height, androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))) }
+        androidx.compose.ui.graphics.drawscope.clipPath(card) {
+            drawPath(surface(1f - b, 1.2f, amp * 0.8f), lemon.copy(alpha = 0.22f))
+            drawPath(surface(a, 1.6f, amp), lemon.copy(alpha = 0.34f))
+        }
         if (brim <= 0.01f) return@drawBehind
         val r = 3.5.dp.toPx()
         // Spill over the brim: little bulges that roll off the top corners.

@@ -40,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -90,13 +91,13 @@ import java.util.Locale
 @Composable
 fun Seg(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).border(2.dp, MaterialTheme.colorScheme.outlineVariant).padding(5.dp),
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, CornerCard).border(2.dp, MaterialTheme.colorScheme.outlineVariant, CornerCard).padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         labels.forEachIndexed { i, l ->
             val on = i == selected
             Box(
-                Modifier.weight(1f).heightIn(min = 44.dp).background(if (on) MaterialTheme.colorScheme.onSurface else Color.Transparent).clickable { onSelect(i) },
+                Modifier.weight(1f).heightIn(min = 44.dp).clip(CornerSmall).background(if (on) MaterialTheme.colorScheme.onSurface else Color.Transparent).clickable { onSelect(i) },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(l, style = MaterialTheme.typography.titleSmall, color = if (on) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -273,8 +274,8 @@ fun WorkoutsPage(me: Profile, save: (Entry) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         listOf(R.string.cat_flat, R.string.cat_build).forEachIndexed { i, label ->
             Column(
-                Modifier.weight(1f).background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(2.dp, if (cat == i) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+                Modifier.weight(1f).clip(CornerCard).background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(2.dp, if (cat == i) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CornerCard)
                     .clickable { cat = i }.padding(16.dp),
             ) { Big(s(label), 22) }
         }
@@ -325,7 +326,7 @@ private fun VitalCard(
             Column(Modifier.weight(1f)) {
                 Label(title)
                 Big(value, 26)
-                if (status != null) Text(levelText(ctx, status), style = if (status == Level.OK) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleSmall, color = if (status == Level.OK) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
+                if (status != null) Text(levelText(ctx, status), style = if (status == Level.OK) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleSmall, color = if (status == Level.OK) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
                 if (extra != null) Label(extra)
             }
             Box(Modifier.width(110.dp)) { Spark(values) }
@@ -441,7 +442,7 @@ fun FoodPage(me: Profile, onAdd: (String) -> Unit, save: (Entry) -> Unit) {
     }
     val water = me.since(T.WATER, dayStart()).sumOf { it.a }.toInt()
     val goalB = (me.waterGoal / 750).coerceAtLeast(1)
-    val accent = MaterialTheme.colorScheme.primaryContainer
+    val accent = MaterialTheme.colorScheme.primary
     Block {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(s(R.string.t_water), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
@@ -450,7 +451,7 @@ fun FoodPage(me: Profile, onAdd: (String) -> Unit, save: (Entry) -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             repeat(goalB.coerceAtMost(8)) { i ->
                 val part = (water / 750f - i).coerceIn(0f, 1f)
-                Box(Modifier.width(30.dp).height(64.dp).border(2.dp, MaterialTheme.colorScheme.primary), contentAlignment = Alignment.BottomCenter) {
+                Box(Modifier.width(30.dp).height(64.dp).clip(CornerSmall).border(2.dp, accent, CornerSmall), contentAlignment = Alignment.BottomCenter) {
                     Box(Modifier.fillMaxWidth().height((64 * part).dp).background(accent))
                 }
             }
@@ -464,7 +465,7 @@ fun FoodPage(me: Profile, onAdd: (String) -> Unit, save: (Entry) -> Unit) {
 private fun MoreGroup(title: String, rows: List<Pair<String, () -> Unit>>) {
     val tint = MaterialTheme.colorScheme.onSurfaceVariant
     Label(title)
-    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).border(2.dp, MaterialTheme.colorScheme.outlineVariant).padding(horizontal = 18.dp)) {
+    Column(Modifier.fillMaxWidth().clip(CornerCard).background(MaterialTheme.colorScheme.surfaceVariant).border(2.dp, MaterialTheme.colorScheme.outlineVariant, CornerCard).padding(horizontal = 18.dp)) {
         rows.forEachIndexed { i, (label, act) ->
             if (i > 0) Rule()
             Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(onClick = act), verticalAlignment = Alignment.CenterVertically) {

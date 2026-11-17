@@ -55,7 +55,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
@@ -146,7 +145,7 @@ fun PlacesPage(me: Profile) {
 @Composable
 private fun MapButton(desc: String, onClick: () -> Unit, glyph: DrawScope.(Color) -> Unit) {
     val ink = MaterialTheme.colorScheme.onBackground
-    Surface(Modifier.clickable(onClick = onClick).semantics { contentDescription = desc }, color = MaterialTheme.colorScheme.background, shape = RoundedCornerShape(2.dp), shadowElevation = 4.dp) {
+    Surface(Modifier.clickable(onClick = onClick).semantics { contentDescription = desc }, color = MaterialTheme.colorScheme.background, shape = RoundedCornerShape(8.dp), shadowElevation = 4.dp) {
         Box(Modifier.padding(12.dp), contentAlignment = Alignment.Center) {
             androidx.compose.foundation.Canvas(Modifier.size(24.dp)) { glyph(ink) }
         }
@@ -253,7 +252,7 @@ fun PlacesView(me: Profile, inline: Boolean, onClose: () -> Unit, onFull: () -> 
                 }
             }
         }
-        Box(Modifier.fillMaxWidth().height(260.dp).clipToBounds()) {
+        Box(Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(8.dp))) {
             RouteMap(
                 lines, stops, names, dark, MaterialTheme.colorScheme.primary.toArgb(), "$from/$to/$mode/$startOnMe/$locateTick",
                 here, startOnMe, { renaming = it }, Modifier.fillMaxSize(),

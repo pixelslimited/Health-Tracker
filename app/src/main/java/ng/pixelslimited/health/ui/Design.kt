@@ -124,6 +124,10 @@ fun <T> SwapIcon(state: T, modifier: Modifier = Modifier, content: @Composable (
     }
 }
 
+/** A little rounding on every box and button. Inner shapes follow the concentric rule (outer minus gap). */
+val CornerCard = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+val CornerSmall = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+
 /** Dark mode depth: a faint light rim along the top edge, as if lit from above. Nothing in light mode. */
 fun Modifier.topLight(dark: Boolean): Modifier = if (!dark) this else drawWithContent {
     drawContent()

@@ -102,8 +102,8 @@ fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean 
         interactionSource = src,
         modifier = modifier.heightIn(min = 56.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         enabled = enabled,
-        shape = RoundedCornerShape(2.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
         content = content,
     )
 }
@@ -118,7 +118,7 @@ fun OutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: 
         interactionSource = src,
         modifier = modifier.heightIn(min = 56.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         enabled = enabled,
-        shape = RoundedCornerShape(2.dp),
+        shape = RoundedCornerShape(8.dp),
         border = BorderStroke(2.dp, MaterialTheme.colorScheme.onSurface),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
         content = content,
@@ -149,7 +149,7 @@ fun LevelText(level: Level) {
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
-        color = if (level == Level.OK) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+        color = if (level == Level.OK) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
         fontWeight = if (level == Level.DANGER) FontWeight.Bold else FontWeight.Normal,
     )
 }

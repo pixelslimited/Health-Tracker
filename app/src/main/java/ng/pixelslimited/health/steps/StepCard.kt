@@ -25,7 +25,7 @@ object StepCard {
         val frac = (steps.toFloat() / goal).coerceIn(0f, 1f)
         val night = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val ink = if (night) 0xFFF4F1EA.toInt() else 0xFF101417.toInt()
-        val accent = if (night) 0xFFBFEC36.toInt() else 0xFF4A6B00.toInt()
+        val accent = if (night) 0xFFE5484D.toInt() else 0xFFC62F35.toInt()
         val w = 1000
         val h = if (big) 400 else 124
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)

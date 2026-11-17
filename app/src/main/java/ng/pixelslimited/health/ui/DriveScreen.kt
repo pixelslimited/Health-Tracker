@@ -142,11 +142,11 @@ import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.TilesOverlay
 
-// Drive mode uses the app's own scheme: ink and paper base tones, one lemon-green accent, in light and dark.
+// Drive mode uses the app's own scheme: ink and paper base tones, one red accent, in light and dark.
 private class Pal(val dark: Boolean, val bg: Color, val card: Color, val field: Color, val line: Color, val off: Color, val grey: Color, val ink: Color, val accent: Color)
 
-private val DarkPal = Pal(true, Color(0xFF101417), Color(0xFF1B2226), Color(0xFF232B30), Color(0xFF2E373D), Color(0xFF3A444C), Color(0xFFA9B0B5), Color(0xFFF4F1EA), Color(0xFFBFEC36))
-private val LightPal = Pal(false, Color(0xFFF4F1EA), Color(0xFFE7E3D9), Color(0xFFF4F1EA), Color(0xFFCFCBC0), Color(0xFFCFCBC0), Color(0xFF555D62), Color(0xFF101417), Color(0xFFBAE43E))
+private val DarkPal = Pal(true, Color(0xFF101417), Color(0xFF1B2226), Color(0xFF232B30), Color(0xFF2E373D), Color(0xFF3A444C), Color(0xFFA9B0B5), Color(0xFFF4F1EA), Color(0xFFE5484D))
+private val LightPal = Pal(false, Color(0xFFF4F1EA), Color(0xFFE7E3D9), Color(0xFFF4F1EA), Color(0xFFCFCBC0), Color(0xFFCFCBC0), Color(0xFF555D62), Color(0xFF101417), Color(0xFFC62F35))
 private var pal by mutableStateOf(DarkPal)
 
 private val BG get() = pal.bg
@@ -158,17 +158,15 @@ private val OFF get() = pal.off
 private val GREY get() = pal.grey
 private val INK get() = pal.ink
 private val LIME get() = pal.accent      // the accent
-/** Red is kept for the speed-limit sign and going over it. */
-private val RED get() = if (pal.dark) Color(0xFFE5484D) else Color(0xFFC62F35)
-/** Accent for text on the page: lemon in dark, a deeper green on light paper. */
-private val ACCTXT get() = if (pal.dark) pal.accent else Color(0xFF4A6B00)
-private val ONACC = Color(0xFF101417)    // ink on the lemon accent
+private val RED get() = pal.accent
+private val ACCTXT get() = pal.accent
+private val ONACC = Color(0xFFF4F1EA)    // text on the accent
 private val AMBER = Color(0xFFFFB020)
 
 
 private val INTER = FontFamily(Font(R.font.inter_regular), Font(R.font.inter_semibold, FontWeight.SemiBold))
 private val CARDS = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
-private val SQ = RoundedCornerShape(2.dp)
+private val SQ = RoundedCornerShape(8.dp)
 
 @Composable
 private fun Tx(t: String, size: Int, color: Color = INK, cond: Boolean = false, modifier: Modifier = Modifier, align: TextAlign? = null, maxLines: Int = Int.MAX_VALUE) {
@@ -828,7 +826,7 @@ private class CarOverlay(val density: Float, accent: Int, ringColor: Int) : Over
     private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = (accent and 0x00FFFFFF) or 0x33000000 }
     private val dark = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ringColor }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accent }
-    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF101417.toInt() }
+    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF4F1EA.toInt() }
 
     override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {
         if (shadow || !show) return

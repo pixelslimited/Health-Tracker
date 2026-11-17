@@ -62,7 +62,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -170,7 +169,7 @@ fun AppRoot() {
                         Text(s(R.string.tab_today), style = MaterialTheme.typography.headlineMedium)
                     }
                     Box(
-                        Modifier.size(52.dp).border(2.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(2.dp)).clickable { page = "settings" },
+                        Modifier.size(52.dp).border(2.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(8.dp)).clickable { page = "settings" },
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Outlined.Person, contentDescription = s(R.string.profile_title)) }
                 }
@@ -260,7 +259,7 @@ fun FloatingUpdate(release: Updater.Release, onDismiss: () -> Unit) {
                     progress = -1f
                     if (apk == null) toast(ctx, ctx.getString(R.string.update_failed)) else Updater.install(ctx, apk)
                 }
-            }) { Text(s(R.string.update_short), color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) oklch(0.48f, 0.13f, 128f) else MaterialTheme.colorScheme.primaryContainer, fontWeight = FontWeight.Bold) }
+            }) { Text(s(R.string.update_short), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
             IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = s(R.string.close), tint = bg) }
         }
         if (progress >= 0f) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(end = 12.dp, bottom = 4.dp))
@@ -462,7 +461,7 @@ fun RiskDialog(me: Profile, onClose: () -> Unit) {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 val sc = score
                 if (sc == null) {
-                    if (bmi == null) Text(s(R.string.risk_need_weight), color = MaterialTheme.colorScheme.error)
+                    if (bmi == null) Text(s(R.string.risk_need_weight), color = MaterialTheme.colorScheme.primary)
                     Ruler(waist, { waist = it }, 50..170, 1, s(R.string.waist_cm))
                     YesNo(s(R.string.q_active), active) { active = it }
                     YesNo(s(R.string.q_veg), veg) { veg = it }
