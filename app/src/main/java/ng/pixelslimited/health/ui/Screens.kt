@@ -313,6 +313,9 @@ fun MeasureHr(onDone: (Int) -> Unit, onClose: () -> Unit) {
                     p.unbindAll()
                     val camera = p.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, analysis)
                     camera.cameraControl.enableTorch(true)
+                    // A darker exposure keeps the flash-lit finger from turning pure white, which flattens the pulse.
+                    val ex = camera.cameraInfo.exposureState
+                    if (ex.isExposureCompensationSupported) camera.cameraControl.setExposureCompensationIndex(ex.exposureCompensationRange.lower / 2)
                 } catch (e: Exception) {
                     cameraFailed = true
                 }
