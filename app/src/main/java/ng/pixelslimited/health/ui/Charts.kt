@@ -371,19 +371,31 @@ fun PulseWave(wave: List<Float>, bpm: Int = 60, height: androidx.compose.ui.unit
     }
 }
 
-/** Fills the block from the bottom like a liquid up to [level] (0 to 1), with two slowly moving wave surfaces. Negative turns it off. */
+/**
+ * Fills the block from the bottom like a lemon-green liquid up to [level] (steps / goal), with two slowly moving
+ * wave surfaces. At 1 or more the block is full and keeps overflowing: the surface brims over the top edge and
+ * runs down both sides in drops, faster the further past the goal. Negative turns it off.
+ */
 @Composable
 fun Modifier.liquid(level: Float): Modifier {
     if (level < 0f) return this
-    val accent = MaterialTheme.colorScheme.primary
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val lemon = if (dark) oklch(0.88f, 0.20f, 122f) else oklch(0.80f, 0.20f, 124f)
+    val over = level >= 1f
     val target by androidx.compose.animation.core.animateFloatAsState(level.coerceIn(0f, 1f), androidx.compose.animation.core.tween(1400), label = "level")
     val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "liquid")
     val a by t.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(4200, easing = androidx.compose.animation.core.LinearEasing)), label = "a")
     val b by t.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(6300, easing = androidx.compose.animation.core.LinearEasing)), label = "b")
+    // The spill speeds up the further past the goal you go (up to twice as fast at double the goal).
+    val spillMs = (1800 / level.coerceIn(1f, 2f)).toInt()
+    val c by t.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(spillMs, easing = androidx.compose.animation.core.LinearEasing)), label = "c")
+    // Once full, the liquid rises over the brim smoothly instead of jumping.
+    val brim by androidx.compose.animation.core.animateFloatAsState(if (over) 1f else 0f, androidx.compose.animation.core.tween(900), label = "brim")
     return drawBehind {
         if (target <= 0.005f) return@drawBehind
-        val base = size.height * (1f - target)
-        val amp = if (target >= 0.995f) 0f else 5.dp.toPx()
+        val lift = 6.dp.toPx() * brim
+        val base = size.height * (1f - target) - lift
+        val amp = 5.dp.toPx() * (if (target >= 0.995f) 0.6f + 0.4f * brim else 1f)
         fun surface(phase: Float, freq: Float, h: Float): Path {
             val p = Path()
             p.moveTo(0f, size.height)
@@ -396,7 +408,28 @@ fun Modifier.liquid(level: Float): Modifier {
             p.close()
             return p
         }
-        drawPath(surface(1f - b, 1.2f, amp * 0.8f), accent.copy(alpha = 0.12f))
-        drawPath(surface(a, 1.6f, amp), accent.copy(alpha = 0.2f))
+        drawPath(surface(1f - b, 1.2f, amp * 0.8f), lemon.copy(alpha = 0.22f))
+        drawPath(surface(a, 1.6f, amp), lemon.copy(alpha = 0.34f))
+        if (brim <= 0.01f) return@drawBehind
+        // Overflow: a thin sheet running down each outer edge, with drops sliding down it and falling off the bottom.
+        val sheet = 3.dp.toPx()
+        val r = 3.5.dp.toPx()
+        val run = size.height + 14.dp.toPx()
+        listOf(-sheet / 2 - 1.dp.toPx() to 0f, size.width + sheet / 2 + 1.dp.toPx() to 0.5f).forEach { (x, offset) ->
+            drawLine(lemon.copy(alpha = 0.55f * brim), Offset(x, base.coerceAtLeast(-lift)), Offset(x, size.height), strokeWidth = sheet, cap = StrokeCap.Round)
+            for (k in 0..2) {
+                val f = (c + offset + k / 3f) % 1f
+                val y = -lift + run * f
+                val fade = if (y > size.height) (1f - (y - size.height) / (run - size.height)).coerceIn(0f, 1f) else 1f
+                drawCircle(lemon.copy(alpha = 0.9f * brim * fade), r * (0.8f + 0.4f * f), Offset(x, y))
+            }
+        }
+        // Spill over the brim: little bulges that roll off the top corners.
+        for (k in 0..1) {
+            val f = (c * 2f + k * 0.5f) % 1f
+            val y = -lift - 3.dp.toPx() * kotlin.math.sin(f * 3.1416f)
+            drawCircle(lemon.copy(alpha = 0.7f * brim), r, Offset(size.width * (0.5f - 0.5f * f), y))
+            drawCircle(lemon.copy(alpha = 0.7f * brim), r, Offset(size.width * (0.5f + 0.5f * f), y))
+        }
     }
 }
