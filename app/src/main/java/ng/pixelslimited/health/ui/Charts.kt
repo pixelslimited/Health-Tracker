@@ -33,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -292,7 +294,10 @@ fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (
     val mut = MaterialTheme.colorScheme.onSurfaceVariant
     val plusBg = MaterialTheme.colorScheme.primary
     val plus = MaterialTheme.colorScheme.onPrimary
-    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).navigationBarsPadding()) {
+    Column(
+        Modifier.fillMaxWidth().onGloballyPositioned { Spill.navTop = it.boundsInRoot().top }
+            .background(MaterialTheme.colorScheme.background).navigationBarsPadding(),
+    ) {
         Box(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             for (slot in 0..4) {
@@ -411,19 +416,7 @@ fun Modifier.liquid(level: Float): Modifier {
         drawPath(surface(1f - b, 1.2f, amp * 0.8f), lemon.copy(alpha = 0.22f))
         drawPath(surface(a, 1.6f, amp), lemon.copy(alpha = 0.34f))
         if (brim <= 0.01f) return@drawBehind
-        // Overflow: a thin sheet running down each outer edge, with drops sliding down it and falling off the bottom.
-        val sheet = 3.dp.toPx()
         val r = 3.5.dp.toPx()
-        val run = size.height + 14.dp.toPx()
-        listOf(-sheet / 2 - 1.dp.toPx() to 0f, size.width + sheet / 2 + 1.dp.toPx() to 0.5f).forEach { (x, offset) ->
-            drawLine(lemon.copy(alpha = 0.55f * brim), Offset(x, base.coerceAtLeast(-lift)), Offset(x, size.height), strokeWidth = sheet, cap = StrokeCap.Round)
-            for (k in 0..2) {
-                val f = (c + offset + k / 3f) % 1f
-                val y = -lift + run * f
-                val fade = if (y > size.height) (1f - (y - size.height) / (run - size.height)).coerceIn(0f, 1f) else 1f
-                drawCircle(lemon.copy(alpha = 0.9f * brim * fade), r * (0.8f + 0.4f * f), Offset(x, y))
-            }
-        }
         // Spill over the brim: little bulges that roll off the top corners.
         for (k in 0..1) {
             val f = (c * 2f + k * 0.5f) % 1f

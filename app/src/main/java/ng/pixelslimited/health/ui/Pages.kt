@@ -45,6 +45,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -146,7 +148,14 @@ fun StepsCard(me: Profile, hourly: Boolean, onClick: (() -> Unit)? = null) {
             Button(onClick = { ask.launch(StepService.perms()) }) { Text(s(R.string.enable)) }
         }
     }
-    Block(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier, fill = steps.toFloat() / me.dailyGoal.coerceAtLeast(1), hero = true) {
+    val ratio = steps.toFloat() / me.dailyGoal.coerceAtLeast(1)
+    LaunchedEffect(ratio) { Spill.level = ratio }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { Spill.card = null; Spill.level = 0f } }
+    Block(
+        (if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .onGloballyPositioned { Spill.card = it.boundsInRoot() },
+        fill = ratio, hero = true,
+    ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(s(R.string.steps), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
             Text(String.format(Locale.getDefault(), "%d%%", (steps * 100L / me.dailyGoal.coerceAtLeast(1)).toInt()), style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"))

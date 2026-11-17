@@ -61,6 +61,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -143,7 +144,10 @@ fun AppRoot() {
     val target = if (page.isNotEmpty()) page else tab.toString() + (if (tab == 1) actSub else if (tab == 2) healthSub else 0)
     val scroll = rememberScrollState()
     LaunchedEffect(target) { scroll.scrollTo(0) }
+    Box(Modifier.fillMaxSize()) {
+    WaterLayer(Modifier.fillMaxSize())
     Scaffold(
+        containerColor = Color.Transparent,
         bottomBar = { BottomBar(titles.map { s(it) }, if (page.isNotEmpty()) 3 else tab, s(R.string.add), { page = ""; tab = it }, { add = "pick" }) }
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
@@ -213,6 +217,7 @@ fun AppRoot() {
             release?.let { FloatingUpdate(it) { dismissed = true } }
         }
         }
+    }
     }
     AddFlow(me, add, { add = it }, save)
     alert?.let { EmergencyDialog(me, it) { alert = null } }
