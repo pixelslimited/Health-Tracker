@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -495,7 +495,7 @@ fun RemindersPage(me: Profile) {
                 IconButton(onClick = {
                     Reminders.cancel(ctx, r)
                     Store.edit { p -> p.copy(reminders = p.reminders.filter { it.id != r.id }) }
-                }) { Icon(Icons.Filled.Delete, contentDescription = s(R.string.delete)) }
+                }) { Icon(Icons.Outlined.Delete, contentDescription = s(R.string.delete)) }
             }
         }
     }
@@ -534,7 +534,7 @@ fun RecentEntries(me: Profile) {
                     Text(typeName(ctx, e.type) + ": " + e.value(ctx), style = MaterialTheme.typography.titleSmall)
                     Label(whenText(e.ts))
                 }
-                IconButton(onClick = { Store.edit { p -> p.copy(entries = p.entries - e) } }) { Icon(Icons.Filled.Delete, contentDescription = s(R.string.delete)) }
+                IconButton(onClick = { Store.edit { p -> p.copy(entries = p.entries - e) } }) { Icon(Icons.Outlined.Delete, contentDescription = s(R.string.delete)) }
             }
         }
     }

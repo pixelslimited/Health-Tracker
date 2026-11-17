@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -403,7 +404,7 @@ fun DriveScreen(onClose: () -> Unit) {
             onDispose { view.keepScreenOn = false }
         }
         Box(Modifier.fillMaxSize().background(BG)) {
-            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 // ---------------- top: next turn while navigating, otherwise search ----------------
                 if (stage == 3 && prog != null && rt != null) {
                     val st = rt.steps.getOrNull(prog.next)
@@ -418,9 +419,10 @@ fun DriveScreen(onClose: () -> Unit) {
                 } else {
                     Row(Modifier.fillMaxWidth().height(56.dp).clip(SQ).background(FIELD).padding(start = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(44.dp).clickable { if (focused || stage > 0) goBack() }, contentAlignment = Alignment.Center) {
+                            SwapIcon(focused || stage > 0) { backIcon ->
                             ComposeCanvas(Modifier.size(22.dp)) {
                                 val u = size.minDimension / 24f
-                                if (focused || stage > 0) {
+                                if (backIcon) {
                                     drawLine(INK, Offset(20 * u, 12 * u), Offset(5 * u, 12 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
                                     drawLine(INK, Offset(5 * u, 12 * u), Offset(11 * u, 6 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
                                     drawLine(INK, Offset(5 * u, 12 * u), Offset(11 * u, 18 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
@@ -428,6 +430,7 @@ fun DriveScreen(onClose: () -> Unit) {
                                     drawCircle(GREY, 7 * u, Offset(11 * u, 11 * u), style = Stroke(2 * u, cap = StrokeCap.Round))
                                     drawLine(GREY, Offset(16 * u, 16 * u), Offset(20 * u, 20 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
                                 }
+                            }
                             }
                         }
                         BasicTextField(
@@ -444,7 +447,8 @@ fun DriveScreen(onClose: () -> Unit) {
                                 }
                             },
                         )
-                        if (query.isNotEmpty()) {
+                        SwapIcon(query.isNotEmpty()) { hasText ->
+                        if (hasText) {
                             Box(Modifier.size(44.dp).clickable { query = ""; if (stage in 1..2) { stage = 0; place = null; routes = emptyList() } }.semantics { contentDescription = ctx.getString(R.string.drive_clear) }, contentAlignment = Alignment.Center) {
                                 ComposeCanvas(Modifier.size(18.dp)) {
                                     drawLine(INK, Offset(0f, 0f), Offset(size.width, size.height), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
@@ -469,6 +473,7 @@ fun DriveScreen(onClose: () -> Unit) {
                                     drawLine(INK, Offset(12 * u, 18 * u), Offset(12 * u, 21 * u), strokeWidth = 2 * u, cap = StrokeCap.Round)
                                 }
                             }
+                        }
                         }
                     }
                 }
@@ -506,7 +511,8 @@ fun DriveScreen(onClose: () -> Unit) {
                     // Suggestions (or recent places) cover the map while you type.
                     val list = if (query.trim().length < 2) recents else sugs
                     if (focused) {
-                        Column(Modifier.fillMaxSize().background(BG).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp)) {
+                        val ss = rememberScrollState()
+                        Column(Modifier.fillMaxSize().background(BG).fadeEdges(false, ss.canScrollBackward, ss.canScrollForward).verticalScroll(ss).padding(horizontal = 14.dp)) {
                             if (query.trim().length < 2 && list.isNotEmpty()) Tx(s(R.string.drive_recent), 16, GREY, modifier = Modifier.padding(top = 12.dp))
                             list.forEach { sg ->
                                 Row(Modifier.fillMaxWidth().clickable { unfocus(); choose(PlaceInfo(sg.main, sg.sub, sg.lat, sg.lon)) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -551,7 +557,7 @@ fun DriveScreen(onClose: () -> Unit) {
                 } else if (stage == 2 && p != null) {
                     Column(Modifier.fillMaxWidth().clip(SQ).background(FIELD).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (routes.isEmpty()) Tx(s(if (busy) R.string.drive_routing else R.string.drive_noroute), 16, INK)
-                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(run { val hs = rememberScrollState(); Modifier.fadeEdges(true, hs.canScrollBackward, hs.canScrollForward).horizontalScroll(hs) }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             routes.forEachIndexed { i, r ->
                                 val on = i == sel
                                 Column(Modifier.clip(SQ).background(if (on) LIME else BG).clickable { sel = i; fit++ }.padding(horizontal = 14.dp, vertical = 8.dp)) {
@@ -604,7 +610,7 @@ fun DriveScreen(onClose: () -> Unit) {
                             }
                         }
                     }
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(run { val hs = rememberScrollState(); Modifier.fillMaxWidth().fadeEdges(true, hs.canScrollBackward, hs.canScrollForward).horizontalScroll(hs) }, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (stage == 3) {
                             Pill(s(R.string.drive_exit), true) { goBack() }
                             Pill(s(if (mute) R.string.drive_unmute else R.string.drive_mute)) { mute = !mute; if (mute) tts[0]?.stop() }
@@ -751,7 +757,7 @@ private fun DriveMap(
         m.tag = key
         holder.traffic?.onDetach(m)
         holder.traffic = null
-        m.overlayManager.tilesOverlay.setColorFilter(if (dark) TilesOverlay.INVERT_COLORS else null)
+        m.overlayManager.tilesOverlay.setColorFilter(if (dark) TilesOverlay.INVERT_COLORS else multiplyFilter(BG))
         m.overlays.clear()
         m.overlays.add(object : Overlay() {
             override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {}

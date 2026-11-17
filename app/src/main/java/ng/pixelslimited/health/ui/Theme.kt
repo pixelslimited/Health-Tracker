@@ -19,29 +19,31 @@ import androidx.compose.ui.text.font.FontWeight
 import ng.pixelslimited.health.R
 import androidx.compose.ui.unit.sp
 
-// Two base tones, one accent, one hairline colour per theme.
-private val Ink = Color(0xFF101417)
-private val Paper = Color(0xFFF4F1EA)
-private val Accent = Color(0xFFE5484D)
+// Two base tones and one accent, all set in OKLCH so lightness steps match across themes.
+// Borders are see-through ink, so they read the same on any surface.
+private val Ink = oklch(0.185f, 0.012f, 235f)
+private val Paper = oklch(0.960f, 0.011f, 88f)
+private val Accent = oklch(0.600f, 0.190f, 24f)
 /** A little deeper on the cream paper so it stays readable in light mode. */
-private val AccentLight = Color(0xFFC62F35)
+private val AccentLight = oklch(0.545f, 0.175f, 25f)
 
 private val Light = lightColorScheme(
     primary = AccentLight, onPrimary = Paper, secondary = Ink, onSecondary = Paper,
     background = Paper, onBackground = Ink, surface = Paper, onSurface = Ink,
-    surfaceVariant = Color(0xFFE7E3D9), onSurfaceVariant = Color(0xFF555D62),
+    surfaceVariant = oklch(0.920f, 0.014f, 88f), onSurfaceVariant = oklch(0.470f, 0.014f, 235f),
     secondaryContainer = AccentLight.copy(alpha = 0.16f), onSecondaryContainer = Ink,
-    surfaceContainer = Color(0xFFE7E3D9), surfaceContainerHigh = Color(0xFFE7E3D9),
-    outline = Ink.copy(alpha = 0.35f), outlineVariant = Color(0xFFCFCBC0), error = AccentLight, onError = Paper,
+    surfaceContainer = oklch(0.920f, 0.014f, 88f), surfaceContainerHigh = oklch(0.975f, 0.008f, 88f),
+    outline = Ink.copy(alpha = 0.35f), outlineVariant = Ink.copy(alpha = 0.13f), error = AccentLight, onError = Paper,
 )
 
+// Dark depth: each raised layer is a step lighter (page, card, dialog) instead of relying on shadows.
 private val Dark = darkColorScheme(
     primary = Accent, onPrimary = Paper, secondary = Paper, onSecondary = Ink,
     background = Ink, onBackground = Paper, surface = Ink, onSurface = Paper,
-    surfaceVariant = Color(0xFF1B2226), onSurfaceVariant = Color(0xFFA9B0B5),
+    surfaceVariant = oklch(0.245f, 0.014f, 235f), onSurfaceVariant = oklch(0.760f, 0.012f, 235f),
     secondaryContainer = Accent.copy(alpha = 0.24f), onSecondaryContainer = Paper,
-    surfaceContainer = Color(0xFF1B2226), surfaceContainerHigh = Color(0xFF1B2226),
-    outline = Paper.copy(alpha = 0.35f), outlineVariant = Color(0xFF2A3237), error = Accent, onError = Paper,
+    surfaceContainer = oklch(0.245f, 0.014f, 235f), surfaceContainerHigh = oklch(0.295f, 0.015f, 235f),
+    outline = Paper.copy(alpha = 0.35f), outlineVariant = Paper.copy(alpha = 0.11f), error = Accent, onError = Paper,
 )
 
 // Inter for text, Inter Display for headings and numerals (bundled, SIL Open Font License).

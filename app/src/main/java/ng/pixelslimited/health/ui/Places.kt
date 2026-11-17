@@ -338,7 +338,7 @@ fun PlacesView(me: Profile, inline: Boolean, onClose: () -> Unit, onFull: () -> 
                             Text(s(R.string.places_title), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
                             TextButton(onClick = onClose) { Text(s(R.string.close)) }
                         }
-                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(run { val hs = rememberScrollState(); Modifier.fillMaxWidth().fadeEdges(true, hs.canScrollBackward, hs.canScrollForward).horizontalScroll(hs) }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf(R.string.pl_day, R.string.pl_week, R.string.pl_month, R.string.pl_year, R.string.pl_range).forEachIndexed { i, label ->
                                 FilterChip(selected = mode == i, onClick = { mode = i; startOnMe = false }, label = { Text(s(label)) })
                             }
@@ -462,6 +462,7 @@ private fun RouteMap(
     lines: List<List<Pair<Double, Double>>>, stops: List<Stop>, names: List<String>, dark: Boolean,
     accent: Int, scope: String, here: Pair<Double, Double>?, onMe: Boolean, onTap: (Int) -> Unit, modifier: Modifier,
 ) {
+    val paper = MaterialTheme.colorScheme.background
     val ctx = LocalContext.current
     val start = remember { here }
     val map = remember {
@@ -493,7 +494,7 @@ private fun RouteMap(
     AndroidView({ map }, modifier) { m ->
         if (m.tag == key) return@AndroidView
         m.tag = key
-        m.overlayManager.tilesOverlay.setColorFilter(if (dark) TilesOverlay.INVERT_COLORS else null)
+        m.overlayManager.tilesOverlay.setColorFilter(if (dark) TilesOverlay.INVERT_COLORS else multiplyFilter(paper))
         m.overlays.clear()
         val geo = thinRoutes(lines).map { l -> l.map { GeoPoint(it.first, it.second) } }
         geo.filter { it.size > 1 }.forEach { line ->

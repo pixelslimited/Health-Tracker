@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -60,6 +61,7 @@ fun Block(modifier: Modifier = Modifier, fill: Float = -1f, content: @Composable
     Column(
         modifier.fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .topLight(MaterialTheme.colorScheme.background.luminance() < 0.5f)
             .liquid(fill)
             .border(2.dp, MaterialTheme.colorScheme.outlineVariant)
             .padding(16.dp),

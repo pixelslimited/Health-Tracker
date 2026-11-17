@@ -31,17 +31,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -152,7 +148,7 @@ fun AppRoot() {
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
         Column(
-            Modifier.fillMaxSize().verticalScroll(scroll)
+            Modifier.fillMaxSize().imePadding().fadeEdges(false, scroll.canScrollBackward, scroll.canScrollForward, 28.dp).verticalScroll(scroll)
                 .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp).fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -171,7 +167,7 @@ fun AppRoot() {
                     Box(
                         Modifier.size(52.dp).border(2.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(2.dp)).clickable { page = "settings" },
                         contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Filled.Person, contentDescription = s(R.string.profile_title)) }
+                    ) { Icon(Icons.Outlined.Person, contentDescription = s(R.string.profile_title)) }
                 }
             } else {
                 Text(s(titles[tab]), style = MaterialTheme.typography.headlineMedium)
@@ -259,7 +255,7 @@ fun FloatingUpdate(release: Updater.Release, onDismiss: () -> Unit) {
                     if (apk == null) toast(ctx, ctx.getString(R.string.update_failed)) else Updater.install(ctx, apk)
                 }
             }) { Text(s(R.string.update_short), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) }
-            IconButton(onClick = onDismiss) { Icon(Icons.Filled.Close, contentDescription = s(R.string.close), tint = bg) }
+            IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = s(R.string.close), tint = bg) }
         }
         if (progress >= 0f) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(end = 12.dp, bottom = 4.dp))
     }

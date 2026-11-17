@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -66,7 +66,7 @@ fun Settings(data: AppData, me: Profile) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(selected = p.id == me.id, onClick = { switchProfile(ctx, p.id) })
                 Text(p.name, Modifier.weight(1f))
-                if (p.id != me.id) IconButton(onClick = { remove = p }) { Icon(Icons.Filled.Delete, contentDescription = s(R.string.delete)) }
+                if (p.id != me.id) IconButton(onClick = { remove = p }) { Icon(Icons.Outlined.Delete, contentDescription = s(R.string.delete)) }
             }
         }
         OutlinedButton(onClick = { dlg = "profile" }) { Text(s(R.string.add_profile)) }
