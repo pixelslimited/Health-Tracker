@@ -40,7 +40,7 @@ object Spill {
     var navTop by mutableFloatStateOf(0f)
 }
 
-private class Drop(var x: Float, var y: Float, var vx: Float, var vy: Float, val r: Float)
+private class Drop(var x: Float, var y: Float, var vx: Float, var vy: Float, val r: Float, val splash: Boolean = false)
 
 /**
  * Water that gushes over both sides of the steps card when the goal is reached, pours down the screen edges
@@ -74,40 +74,59 @@ fun WaterLayer(modifier: Modifier = Modifier) {
                 val dp = density
                 val navY = (if (Spill.navTop > 0f) Spill.navTop else h) - origin.y
                 // The pool fills while it gushes and drains slowly after.
-                val full = 34f * dp
+                val full = 48f * dp
                 depth = if (Spill.level >= 1f && Spill.card != null) min(full, depth + 40f * dp * dt) else max(0f, depth - 12f * dp * dt)
                 val surface = navY - depth
                 val card = Spill.card
                 if (card != null && Spill.level >= 1f) {
-                    // More over the goal, more water: 70 drops a second at the goal, up to 160.
-                    carry += dt * (70f + 90f * (Spill.level - 1f).coerceIn(0f, 1f))
+                    // A heavy, continuous pour: 300 drops a second at the goal, up to 520, merged into streams.
+                    carry += dt * (300f + 220f * (Spill.level - 1f).coerceIn(0f, 1f))
                     val top = card.top - origin.y
-                    while (carry >= 1f) {
+                    val left = card.left - origin.x
+                    val right = card.right - origin.x
+                    while (carry >= 1f && drops.size < 1100) {
                         carry -= 1f
-                        val left = Random.nextBoolean()
-                        val x = if (left) card.left - origin.x else card.right - origin.x
-                        val y = top + Random.nextFloat() * 10f * dp
-                        val out = (30f + Random.nextFloat() * 90f) * dp
-                        drops.add(Drop(x, y, if (left) -out else out, (-60f + Random.nextFloat() * 60f) * dp, (3f + Random.nextFloat() * 4.5f) * dp))
+                        val k = Random.nextFloat()
+                        val r = (5f + Random.nextFloat() * 6f) * dp
+                        if (k < 0.82f) {
+                            // Over both sides of the card, down the screen edges.
+                            val onLeft = k < 0.41f
+                            val x = if (onLeft) left - r * 0.3f else right + r * 0.3f
+                            val out = (8f + Random.nextFloat() * 40f) * dp
+                            drops.add(Drop(x, top + Random.nextFloat() * 6f * dp, if (onLeft) -out else out, (Random.nextFloat() * 120f - 20f) * dp, r))
+                        } else {
+                            // Out of the bottom of the card, down the gap between the two columns of tiles.
+                            val x = (left + right) / 2f + (Random.nextFloat() - 0.5f) * 6f * dp
+                            drops.add(Drop(x, card.bottom - origin.y - r, (Random.nextFloat() - 0.5f) * 20f * dp, (80f + Random.nextFloat() * 120f) * dp, r * 0.8f))
+                        }
                     }
                 }
-                val g = 1500f * dp
+                val g = 1200f * dp
+                val vmax = 950f * dp
                 val iter = drops.iterator()
+                val splashes = ArrayList<Drop>()
                 while (iter.hasNext()) {
                     val d = iter.next()
-                    d.vy += g * dt
-                    d.vx *= (1f - 2.5f * dt)
+                    d.vy = min(vmax, d.vy + g * dt)
+                    d.vx *= (1f - 3f * dt)
                     d.x += d.vx * dt
                     d.y += d.vy * dt
                     // Pour down the screen edges like a sheet of water.
-                    if (d.x < d.r) { d.x = d.r; d.vx = -d.vx * 0.2f }
-                    if (d.x > w - d.r) { d.x = w - d.r; d.vx = -d.vx * 0.2f }
-                    if (d.y >= surface && depth > 1f) {
+                    if (d.x < d.r * 0.6f) { d.x = d.r * 0.6f; d.vx = 0f }
+                    if (d.x > w - d.r * 0.6f) { d.x = w - d.r * 0.6f; d.vx = 0f }
+                    if (d.y >= surface && depth > 1f && d.vy > 0f) {
                         val i = ((d.x / w) * (n - 1)).toInt().coerceIn(0, n - 1)
-                        waveV[i] += d.vy * 0.004f * d.r / dp
+                        waveV[i] += d.vy * 0.0025f * d.r / dp
+                        // Some of it splashes back up out of the pool.
+                        if (!d.splash && Random.nextFloat() < 0.18f) {
+                            repeat(2) {
+                                splashes.add(Drop(d.x, surface, (Random.nextFloat() - 0.5f) * 260f * dp, -(220f + Random.nextFloat() * 260f) * dp, d.r * 0.45f, true))
+                            }
+                        }
                         iter.remove()
                     } else if (d.y > h + 40f * dp) iter.remove()
                 }
+                drops.addAll(splashes)
                 // Ripples spread across the pool and die away.
                 for (i in 0 until n) {
                     val l = if (i > 0) wave[i - 1] else wave[i]
@@ -148,6 +167,47 @@ fun WaterLayer(modifier: Modifier = Modifier) {
             p.lineTo(size.width, size.height)
             p.close()
             drawPath(p, water)
+        }
+        val card = Spill.card
+        if (card != null && Spill.level >= 1f && depth > 0.5f) {
+            val t = frame / 1e9f
+            val top = card.top - origin.y
+            val navY = (if (Spill.navTop > 0f) Spill.navTop else size.height) - origin.y
+            val gap = card.left - origin.x
+            // Each side: a sheet from the brim to the pool, its edge rippling downwards as the water runs.
+            listOf(false, true).forEach { right ->
+                val p = Path()
+                var y = top
+                val pts = ArrayList<Offset>()
+                while (y <= navY) {
+                    val wob = sin(y / (38f * density) - t * 9f) * 3.5f * density + sin(y / (17f * density) - t * 14f) * 1.8f * density
+                    val width = (gap * 0.62f + wob).coerceAtLeast(4f * density)
+                    pts.add(Offset(if (right) size.width - width else width, y))
+                    y += 6f * density
+                }
+                val edgeX = if (right) size.width else 0f
+                p.moveTo(edgeX, top)
+                pts.forEach { p.lineTo(it.x, it.y) }
+                p.lineTo(edgeX, navY)
+                p.close()
+                drawPath(p, water)
+            }
+            // The middle stream through the gap between the tiles.
+            val cx = (card.left + card.right) / 2f - origin.x
+            val bottom = card.bottom - origin.y
+            val mid = Path()
+            var y = bottom
+            mid.moveTo(cx, bottom)
+            val pts = ArrayList<Offset>()
+            while (y <= navY) {
+                val wob = sin(y / (30f * density) - t * 11f) * 1.5f * density
+                pts.add(Offset(cx + 3.5f * density + wob, y))
+                y += 6f * density
+            }
+            pts.forEach { mid.lineTo(it.x, it.y) }
+            pts.asReversed().forEach { mid.lineTo(2 * cx - it.x, it.y) }
+            mid.close()
+            drawPath(mid, water)
         }
         for (d in drops) drawCircle(water, d.r, Offset(d.x, d.y))
     }
