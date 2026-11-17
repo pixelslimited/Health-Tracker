@@ -159,7 +159,7 @@ private val GREY get() = pal.grey
 private val INK get() = pal.ink
 private val LIME get() = pal.accent      // the accent
 private val RED get() = pal.accent
-private val ACCTXT get() = pal.accent
+private val ACCTXT get() = pal.accent      // accent used for text
 private val ONACC = Color(0xFFF4F1EA)    // text on the accent
 private val AMBER = Color(0xFFFFB020)
 

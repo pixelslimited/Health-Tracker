@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -413,8 +414,9 @@ fun Modifier.liquid(level: Float): Modifier {
             p.close()
             return p
         }
-        val card = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, 0f, size.width, size.height, androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))) }
-        androidx.compose.ui.graphics.drawscope.clipPath(card) {
+        // Keep the water inside the rounded bottom corners; above the card it may still brim over.
+        val card = Path().apply { addRoundRect(androidx.compose.ui.geometry.RoundRect(0f, -24.dp.toPx(), size.width, size.height, androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))) }
+        clipPath(card) {
             drawPath(surface(1f - b, 1.2f, amp * 0.8f), lemon.copy(alpha = 0.22f))
             drawPath(surface(a, 1.6f, amp), lemon.copy(alpha = 0.34f))
         }
