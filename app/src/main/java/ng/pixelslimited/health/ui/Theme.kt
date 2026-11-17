@@ -23,27 +23,33 @@ import androidx.compose.ui.unit.sp
 // Borders are see-through ink, so they read the same on any surface.
 private val Ink = oklch(0.185f, 0.012f, 235f)
 private val Paper = oklch(0.960f, 0.011f, 88f)
-private val Accent = oklch(0.600f, 0.190f, 24f)
-/** A little deeper on the cream paper so it stays readable in light mode. */
-private val AccentLight = oklch(0.545f, 0.175f, 25f)
+/** The accent: lemon green. Fills carry ink text; text in the accent uses a deeper shade on light paper. */
+private val Lemon = oklch(0.86f, 0.19f, 123f)
+private val LemonDark = oklch(0.88f, 0.20f, 122f)
+private val Olive = oklch(0.48f, 0.13f, 128f)
+/** Warnings only (readings outside range, danger): not an accent. */
+private val Warn = oklch(0.545f, 0.175f, 25f)
+private val WarnDark = oklch(0.640f, 0.185f, 24f)
 
 private val Light = lightColorScheme(
-    primary = AccentLight, onPrimary = Paper, secondary = Ink, onSecondary = Paper,
+    primary = Olive, onPrimary = Paper, primaryContainer = Lemon, onPrimaryContainer = Ink,
+    secondary = Ink, onSecondary = Paper,
     background = Paper, onBackground = Ink, surface = Paper, onSurface = Ink,
     surfaceVariant = oklch(0.920f, 0.014f, 88f), onSurfaceVariant = oklch(0.470f, 0.014f, 235f),
-    secondaryContainer = AccentLight.copy(alpha = 0.16f), onSecondaryContainer = Ink,
+    secondaryContainer = Lemon.copy(alpha = 0.45f), onSecondaryContainer = Ink,
     surfaceContainer = oklch(0.920f, 0.014f, 88f), surfaceContainerHigh = oklch(0.975f, 0.008f, 88f),
-    outline = Ink.copy(alpha = 0.35f), outlineVariant = Ink.copy(alpha = 0.13f), error = AccentLight, onError = Paper,
+    outline = Ink.copy(alpha = 0.35f), outlineVariant = Ink.copy(alpha = 0.13f), error = Warn, onError = Paper,
 )
 
 // Dark depth: each raised layer is a step lighter (page, card, dialog) instead of relying on shadows.
 private val Dark = darkColorScheme(
-    primary = Accent, onPrimary = Paper, secondary = Paper, onSecondary = Ink,
+    primary = LemonDark, onPrimary = Ink, primaryContainer = LemonDark, onPrimaryContainer = Ink,
+    secondary = Paper, onSecondary = Ink,
     background = Ink, onBackground = Paper, surface = Ink, onSurface = Paper,
     surfaceVariant = oklch(0.245f, 0.014f, 235f), onSurfaceVariant = oklch(0.760f, 0.012f, 235f),
-    secondaryContainer = Accent.copy(alpha = 0.24f), onSecondaryContainer = Paper,
+    secondaryContainer = LemonDark.copy(alpha = 0.25f), onSecondaryContainer = Paper,
     surfaceContainer = oklch(0.245f, 0.014f, 235f), surfaceContainerHigh = oklch(0.295f, 0.015f, 235f),
-    outline = Paper.copy(alpha = 0.35f), outlineVariant = Paper.copy(alpha = 0.11f), error = Accent, onError = Paper,
+    outline = Paper.copy(alpha = 0.35f), outlineVariant = Paper.copy(alpha = 0.11f), error = WarnDark, onError = Paper,
 )
 
 // Inter for text, Inter Display for headings and numerals (bundled, SIL Open Font License).

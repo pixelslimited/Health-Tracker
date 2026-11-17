@@ -142,11 +142,11 @@ import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.TilesOverlay
 
-// Drive mode uses the app's own scheme: ink and paper base tones, one red accent, in light and dark.
+// Drive mode uses the app's own scheme: ink and paper base tones, one lemon-green accent, in light and dark.
 private class Pal(val dark: Boolean, val bg: Color, val card: Color, val field: Color, val line: Color, val off: Color, val grey: Color, val ink: Color, val accent: Color)
 
-private val DarkPal = Pal(true, Color(0xFF101417), Color(0xFF1B2226), Color(0xFF232B30), Color(0xFF2E373D), Color(0xFF3A444C), Color(0xFFA9B0B5), Color(0xFFF4F1EA), Color(0xFFE5484D))
-private val LightPal = Pal(false, Color(0xFFF4F1EA), Color(0xFFE7E3D9), Color(0xFFF4F1EA), Color(0xFFCFCBC0), Color(0xFFCFCBC0), Color(0xFF555D62), Color(0xFF101417), Color(0xFFC62F35))
+private val DarkPal = Pal(true, Color(0xFF101417), Color(0xFF1B2226), Color(0xFF232B30), Color(0xFF2E373D), Color(0xFF3A444C), Color(0xFFA9B0B5), Color(0xFFF4F1EA), Color(0xFFBFEC36))
+private val LightPal = Pal(false, Color(0xFFF4F1EA), Color(0xFFE7E3D9), Color(0xFFF4F1EA), Color(0xFFCFCBC0), Color(0xFFCFCBC0), Color(0xFF555D62), Color(0xFF101417), Color(0xFFBAE43E))
 private var pal by mutableStateOf(DarkPal)
 
 private val BG get() = pal.bg
@@ -158,8 +158,11 @@ private val OFF get() = pal.off
 private val GREY get() = pal.grey
 private val INK get() = pal.ink
 private val LIME get() = pal.accent      // the accent
-private val RED get() = pal.accent
-private val ONACC = Color(0xFFF4F1EA)    // text on the accent
+/** Red is kept for the speed-limit sign and going over it. */
+private val RED get() = if (pal.dark) Color(0xFFE5484D) else Color(0xFFC62F35)
+/** Accent for text on the page: lemon in dark, a deeper green on light paper. */
+private val ACCTXT get() = if (pal.dark) pal.accent else Color(0xFF4A6B00)
+private val ONACC = Color(0xFF101417)    // ink on the lemon accent
 private val AMBER = Color(0xFFFFB020)
 
 
@@ -436,7 +439,7 @@ fun DriveScreen(onClose: () -> Unit) {
                         BasicTextField(
                             value = query, onValueChange = { query = it }, singleLine = true,
                             textStyle = TextStyle(color = INK, fontSize = 16.sp, fontFamily = INTER),
-                            cursorBrush = SolidColor(LIME),
+                            cursorBrush = SolidColor(ACCTXT),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = { sugs.firstOrNull()?.let { sg -> unfocus(); choose(PlaceInfo(sg.main, sg.sub, sg.lat, sg.lon)) } }),
                             modifier = Modifier.weight(1f).height(44.dp).onFocusChanged { focused = it.isFocused },
@@ -502,7 +505,7 @@ fun DriveScreen(onClose: () -> Unit) {
                         }
                         MapBtn(s(R.string.drive_recenter), { follow = true }) { c ->
                             val m = Offset(size.width / 2, size.height / 2)
-                            drawCircle(if (follow) LIME else c, size.width * 0.17f, m, style = Stroke(2.dp.toPx()))
+                            drawCircle(if (follow) ACCTXT else c, size.width * 0.17f, m, style = Stroke(2.dp.toPx()))
                             listOf(0f to -1f, 0f to 1f, -1f to 0f, 1f to 0f).forEach { (dx, dy) ->
                                 drawLine(c, Offset(m.x + dx * size.width * 0.3f, m.y + dy * size.width * 0.3f), Offset(m.x + dx * size.width * 0.48f, m.y + dy * size.width * 0.48f), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
                             }
@@ -530,11 +533,30 @@ fun DriveScreen(onClose: () -> Unit) {
                 if (status.isNotEmpty()) Tx(status, 16, AMBER)
 
                 // ---------------- speed and heading (double-tap to enlarge) ----------------
-                Row(
-                    (if (big == 1) Modifier.weight(1f) else Modifier).fillMaxWidth().pointerInput(Unit) { detectTapGestures(onDoubleTap = { big = if (big == 1) 0 else 1 }) },
+                if (big == 1) {
+                    // Speed enlarged: one big centred number, sized to the space it has.
+                    BoxWithConstraints(
+                        Modifier.weight(1f).fillMaxWidth().pointerInput(Unit) { detectTapGestures(onDoubleTap = { big = 0 }) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        val digits = kmh.roundToInt().toString().length.coerceAtLeast(2)
+                        val sizeSp = min(maxWidth.value / (digits * 0.62f), maxHeight.value * 0.62f).coerceIn(80f, 360f)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Tx(kmh.roundToInt().toString(), sizeSp.toInt(), if (over) RED else INK, cond = true, maxLines = 1, align = TextAlign.Center)
+                            Tx(s(if (live || !granted) R.string.kmh_unit else R.string.drive_waiting), 20, GREY, align = TextAlign.Center)
+                            Spacer(Modifier.height(12.dp))
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Tx(CARDS[(((nb + 22.5f) / 45f).toInt()) % 8], 40, INK, cond = true)
+                                Spacer(Modifier.width(10.dp))
+                                Tx(String.format(Locale.US, "%d\u00B0", nb.roundToInt() % 360), 20, GREY, modifier = Modifier.padding(bottom = 6.dp))
+                            }
+                        }
+                    }
+                } else Row(
+                    Modifier.fillMaxWidth().pointerInput(Unit) { detectTapGestures(onDoubleTap = { big = if (big == 1) 0 else 1 }) },
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    Tx(kmh.roundToInt().toString(), if (big == 1) 150 else if (stage in 1..2 || big == 2) 64 else 104, if (over) RED else INK, cond = true, maxLines = 1)
+                    Tx(kmh.roundToInt().toString(), if (stage in 1..2 || big == 2) 64 else 104, if (over) RED else INK, cond = true, maxLines = 1)
                     Tx(s(if (live || !granted) R.string.kmh_unit else R.string.drive_waiting), 16, GREY, modifier = Modifier.padding(start = 8.dp, bottom = 14.dp).weight(1f), maxLines = 1)
                     Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(bottom = 10.dp)) {
                         Tx(CARDS[(((nb + 22.5f) / 45f).toInt()) % 8], 28, INK, cond = true)
@@ -637,13 +659,13 @@ fun DriveScreen(onClose: () -> Unit) {
                         Switch(checked = auto, onCheckedChange = { auto = it; Drive.setAuto(ctx, it) })
                     }
                     if (!canFs) Tx(
-                        s(R.string.drive_lock_perm), 16, LIME,
+                        s(R.string.drive_lock_perm), 16, ACCTXT,
                         modifier = Modifier.fillMaxWidth().clickable {
                             if (android.os.Build.VERSION.SDK_INT >= 34) ctx.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         }.padding(vertical = 8.dp),
                     )
                     if (!canOver) Tx(
-                        s(R.string.drive_overlay), 16, LIME,
+                        s(R.string.drive_overlay), 16, ACCTXT,
                         modifier = Modifier.fillMaxWidth().clickable { ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.padding(vertical = 8.dp),
                     )
                     OutlinedTextField(value = key, onValueChange = { key = it; Drive.setKey(ctx, it) }, singleLine = true, label = { Text(s(R.string.drive_key)) }, modifier = Modifier.fillMaxWidth())
@@ -787,7 +809,7 @@ private fun DriveMap(
             if (!nav) routes.forEachIndexed { i, r -> if (i != sel && r.lat.size > 1) m.overlays.add(line(r, 0xFF8A9096.toInt(), 12f)) }
             routes.getOrNull(sel)?.let { r ->
                 if (r.lat.size > 1) {
-                    m.overlays.add(line(r, if (dark) 0xCC101417.toInt() else 0xCCFFFFFF.toInt(), 22f))
+                    m.overlays.add(line(r, 0xCC101417.toInt(), 22f))
                     m.overlays.add(line(r, accent, 10f))
                 }
             }
@@ -806,7 +828,7 @@ private class CarOverlay(val density: Float, accent: Int, ringColor: Int) : Over
     private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = (accent and 0x00FFFFFF) or 0x33000000 }
     private val dark = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ringColor }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accent }
-    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF4F1EA.toInt() }
+    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF101417.toInt() }
 
     override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {
         if (shadow || !show) return

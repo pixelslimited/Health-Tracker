@@ -55,6 +55,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
@@ -252,7 +253,7 @@ fun PlacesView(me: Profile, inline: Boolean, onClose: () -> Unit, onFull: () -> 
                 }
             }
         }
-        Box(Modifier.fillMaxWidth().height(260.dp)) {
+        Box(Modifier.fillMaxWidth().height(260.dp).clipToBounds()) {
             RouteMap(
                 lines, stops, names, dark, MaterialTheme.colorScheme.primary.toArgb(), "$from/$to/$mode/$startOnMe/$locateTick",
                 here, startOnMe, { renaming = it }, Modifier.fillMaxSize(),
@@ -479,6 +480,9 @@ private fun RouteMap(
             isTilesScaledToDpi = true
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
             setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
+            // The app's root view does not clip its children, so without this the map tiles paint past the box.
+            clipToOutline = true
+            outlineProvider = android.view.ViewOutlineProvider.BOUNDS
             // Open straight on your last known position so the first tiles loaded are the ones you need.
             if (start != null) {
                 controller.setZoom(16.0)

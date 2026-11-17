@@ -325,7 +325,7 @@ private fun VitalCard(
             Column(Modifier.weight(1f)) {
                 Label(title)
                 Big(value, 26)
-                if (status != null) Text(levelText(ctx, status), style = if (status == Level.OK) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleSmall, color = if (status == Level.OK) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
+                if (status != null) Text(levelText(ctx, status), style = if (status == Level.OK) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleSmall, color = if (status == Level.OK) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
                 if (extra != null) Label(extra)
             }
             Box(Modifier.width(110.dp)) { Spark(values) }
@@ -441,7 +441,7 @@ fun FoodPage(me: Profile, onAdd: (String) -> Unit, save: (Entry) -> Unit) {
     }
     val water = me.since(T.WATER, dayStart()).sumOf { it.a }.toInt()
     val goalB = (me.waterGoal / 750).coerceAtLeast(1)
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = MaterialTheme.colorScheme.primaryContainer
     Block {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(s(R.string.t_water), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
@@ -450,7 +450,7 @@ fun FoodPage(me: Profile, onAdd: (String) -> Unit, save: (Entry) -> Unit) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             repeat(goalB.coerceAtMost(8)) { i ->
                 val part = (water / 750f - i).coerceIn(0f, 1f)
-                Box(Modifier.width(30.dp).height(64.dp).border(2.dp, accent), contentAlignment = Alignment.BottomCenter) {
+                Box(Modifier.width(30.dp).height(64.dp).border(2.dp, MaterialTheme.colorScheme.primary), contentAlignment = Alignment.BottomCenter) {
                     Box(Modifier.fillMaxWidth().height((64 * part).dp).background(accent))
                 }
             }

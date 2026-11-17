@@ -262,7 +262,7 @@ private fun reach(s: Offset, head: Offset, lb: Lb, l1: Float, l2: Float): Pair<O
 /** The drill as a looping, eased keyframe animation of a jointed figure with real bone lengths, on a mat. */
 @Composable
 fun DrillAnimation(d: Drill) {
-    val shirt = MaterialTheme.colorScheme.primary
+    val shirt = MaterialTheme.colorScheme.primaryContainer
     val shirtDark = colorLerp(shirt, Color.Black, 0.3f)
     val mat = MaterialTheme.colorScheme.outlineVariant
     val tr = rememberInfiniteTransition(label = "drill")

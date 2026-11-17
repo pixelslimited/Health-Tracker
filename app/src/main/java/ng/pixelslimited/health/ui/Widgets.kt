@@ -103,7 +103,7 @@ fun Button(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean 
         modifier = modifier.heightIn(min = 56.dp).graphicsLayer { scaleX = scale; scaleY = scale },
         enabled = enabled,
         shape = RoundedCornerShape(2.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
         content = content,
     )
 }
@@ -149,7 +149,7 @@ fun LevelText(level: Level) {
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
-        color = if (level == Level.OK) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+        color = if (level == Level.OK) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
         fontWeight = if (level == Level.DANGER) FontWeight.Bold else FontWeight.Normal,
     )
 }

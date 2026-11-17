@@ -292,8 +292,8 @@ fun NavIcon(kind: Int, tint: Color) {
 fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (Int) -> Unit, onAdd: () -> Unit) {
     val on = MaterialTheme.colorScheme.onSurface
     val mut = MaterialTheme.colorScheme.onSurfaceVariant
-    val plusBg = MaterialTheme.colorScheme.primary
-    val plus = MaterialTheme.colorScheme.onPrimary
+    val plusBg = MaterialTheme.colorScheme.primaryContainer
+    val plus = MaterialTheme.colorScheme.onPrimaryContainer
     Column(
         Modifier.fillMaxWidth().onGloballyPositioned { Spill.navTop = it.boundsInRoot().top }
             .background(MaterialTheme.colorScheme.background).navigationBarsPadding(),
