@@ -68,9 +68,11 @@ object Drive {
     fun resetTrip() { tripM = 0.0; maxMs = 0f; movingMs = 0L }
 
     fun feed(c: Context, l: Location) {
-        if (l.hasAccuracy() && l.accuracy > 100f) return
+        if (l.hasAccuracy() && l.accuracy > 150f) return
         val now = System.currentTimeMillis()
         val prev = fix
+        // A rough network position never replaces a fresh, sharper GPS one.
+        if (prev != null && l.provider != "gps" && now - prev.ts < 3000 && l.hasAccuracy() && l.accuracy > prev.acc + 5f) return
         val sp = if (l.hasSpeed()) l.speed.coerceAtLeast(0f) else 0f
         val br = if (l.hasBearing() && sp > 1.2f) l.bearing else (prev?.bearing ?: 0f)
         fix = Fix(l.latitude, l.longitude, sp, br, if (l.hasAccuracy()) l.accuracy else 0f, if (l.hasAltitude()) l.altitude else 0.0, now)
@@ -149,13 +151,20 @@ object Drive {
         if (lm != null) return
         val a = c.applicationContext
         val m = a.getSystemService(LocationManager::class.java)
-        try {
-            if ("gps" in m.allProviders) {
-                m.requestLocationUpdates("gps", 1000L, 0f, listener, Looper.getMainLooper())
-                app = a
-                lm = m
+        // GPS alone gives nothing indoors or under a roof, so the phone's fused/network position is used as well:
+        // the screen shows you at once and GPS takes over with exact speed as soon as it has a fix.
+        var any = false
+        for (p in listOf("gps", "fused", "network")) {
+            if (p !in m.allProviders) continue
+            try {
+                m.requestLocationUpdates(p, 1000L, 0f, listener, Looper.getMainLooper())
+                any = true
+            } catch (e: Exception) {
             }
-        } catch (e: Exception) {
+        }
+        if (any) {
+            app = a
+            lm = m
         }
     }
 
