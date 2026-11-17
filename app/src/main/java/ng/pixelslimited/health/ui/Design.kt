@@ -3,16 +3,15 @@ package ng.pixelslimited.health.ui
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.os.Build
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -103,18 +102,25 @@ fun Modifier.fadeEdges(horizontal: Boolean, start: Boolean, end: Boolean, size: 
 /** Blurred icon swap: the old icon blurs and shrinks away while the new one sharpens in. */
 @Composable
 fun <T> SwapIcon(state: T, modifier: Modifier = Modifier, content: @Composable (T) -> Unit) {
-    AnimatedContent(
-        targetState = state,
-        modifier = modifier,
-        transitionSpec = {
-            (fadeIn(tween(220, delayMillis = 40)) + scaleIn(tween(260), initialScale = 0.6f)) togetherWith
-                (fadeOut(tween(160)) + scaleOut(tween(200), targetScale = 0.6f))
-        },
-        contentAlignment = Alignment.Center,
-        label = "swap",
-    ) { s ->
-        val blur by transition.animateDp(transitionSpec = { tween(220) }, label = "blur") { if (it == androidx.compose.animation.EnterExitState.Visible) 0.dp else 6.dp }
-        Box(if (Build.VERSION.SDK_INT >= 31) Modifier.blur(blur) else Modifier) { content(s) }
+    var shown by remember { mutableStateOf(state) }
+    var prev by remember { mutableStateOf<T?>(null) }
+    val p = remember { Animatable(1f) }
+    LaunchedEffect(state) {
+        if (state != shown) {
+            prev = shown
+            shown = state
+            p.snapTo(0f)
+            p.animateTo(1f, tween(260))
+            prev = null
+        }
+    }
+    val v = p.value
+    fun Modifier.soft(amount: Float) = if (Build.VERSION.SDK_INT >= 31 && amount > 0.01f) blur((6f * amount).dp) else this
+    Box(modifier, contentAlignment = Alignment.Center) {
+        prev?.let { old ->
+            Box(Modifier.graphicsLayer { alpha = 1f - v; scaleX = 1f - 0.4f * v; scaleY = 1f - 0.4f * v }.soft(v)) { content(old) }
+        }
+        Box(Modifier.graphicsLayer { alpha = v; scaleX = 0.6f + 0.4f * v; scaleY = 0.6f + 0.4f * v }.soft(1f - v)) { content(shown) }
     }
 }
 
