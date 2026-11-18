@@ -80,19 +80,12 @@ fun WaterLayer(modifier: Modifier = Modifier) {
                     val right = card.right - origin.x
                     while (carry >= 1f && drops.size < 1100) {
                         carry -= 1f
-                        val k = Random.nextFloat()
                         val r = (5f + Random.nextFloat() * 6f) * dp
-                        if (k < 0.82f) {
-                            // Over today's side of the card only, down the screen edge; drops three times as big.
-                            val big = r * 3f
-                            val x = if (rightToday) right + big * 0.3f else left - big * 0.3f
-                            val out = (8f + Random.nextFloat() * 40f) * dp
-                            drops.add(Drop(x, top + Random.nextFloat() * 6f * dp, if (rightToday) out else -out, (Random.nextFloat() * 120f - 20f) * dp, big))
-                        } else {
-                            // Out of the bottom of the card, down the gap between the two columns of tiles.
-                            val x = (left + right) / 2f + (Random.nextFloat() - 0.5f) * 6f * dp
-                            drops.add(Drop(x, card.bottom - origin.y - r, (Random.nextFloat() - 0.5f) * 20f * dp, (80f + Random.nextFloat() * 120f) * dp, r * 0.8f))
-                        }
+                        // Over today's side of the card only, down the screen edge; drops three times as big.
+                        val big = r * 3f
+                        val x = if (rightToday) right + big * 0.3f else left - big * 0.3f
+                        val out = (8f + Random.nextFloat() * 40f) * dp
+                        drops.add(Drop(x, top + Random.nextFloat() * 6f * dp, if (rightToday) out else -out, (Random.nextFloat() * 120f - 20f) * dp, big))
                     }
                 }
                 val g = 1200f * dp
@@ -152,22 +145,6 @@ fun WaterLayer(modifier: Modifier = Modifier) {
                 p.close()
                 drawPath(p, water)
             }
-            // The middle stream through the gap between the tiles.
-            val cx = (card.left + card.right) / 2f - origin.x
-            val bottom = card.bottom - origin.y
-            val mid = Path()
-            var y = bottom
-            mid.moveTo(cx, bottom)
-            val pts = ArrayList<Offset>()
-            while (y <= navY) {
-                val wob = sin(y / (30f * density) - t * 11f) * 1.5f * density
-                pts.add(Offset(cx + 3.5f * density + wob, y))
-                y += 6f * density
-            }
-            pts.forEach { mid.lineTo(it.x, it.y) }
-            pts.asReversed().forEach { mid.lineTo(2 * cx - it.x, it.y) }
-            mid.close()
-            drawPath(mid, water)
         }
         for (d in drops) drawCircle(water, d.r, Offset(d.x, d.y))
     }
