@@ -33,8 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -296,7 +294,7 @@ fun BottomBar(labels: List<String>, selected: Int, addLabel: String, onSelect: (
     val plusBg = MaterialTheme.colorScheme.primary
     val plus = MaterialTheme.colorScheme.onPrimary
     Column(
-        Modifier.fillMaxWidth().onGloballyPositioned { Spill.navTop = it.boundsInRoot().top }
+        Modifier.fillMaxWidth()
             .background(MaterialTheme.colorScheme.background).navigationBarsPadding(),
     ) {
         Box(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.outlineVariant))
