@@ -277,7 +277,11 @@ fun DriveScreen(onClose: () -> Unit) {
     val fix = Drive.fix
     val live = fix != null && now - fix.ts < 6000
     val kmh by animateFloatAsState(if (fix != null && live) fix.speed * 3.6f else 0f, spring(dampingRatio = 0.8f, stiffness = 120f), label = "speed")
-    val nb = (((fix?.bearing ?: 0f) % 360f) + 360f) % 360f
+    DisposableEffect(Unit) {
+        ng.pixelslimited.health.drive.Compass.start(app)
+        onDispose { ng.pixelslimited.health.drive.Compass.stop() }
+    }
+    val nb = (((ng.pixelslimited.health.drive.Compass.heading ?: fix?.bearing ?: 0f) % 360f) + 360f) % 360f
     LaunchedEffect(fix) { fix?.let { avgSp = avgSp * 0.9f + it.speed * 0.1f } }
 
     val tts = remember { arrayOfNulls<TextToSpeech>(1) }
@@ -733,7 +737,7 @@ private fun DriveMap(
     LaunchedEffect(fix) {
         val f = fix ?: return@LaunchedEffect
         car.show = true
-        car.bearing = f.bearing
+        car.bearing = ng.pixelslimited.health.drive.Compass.heading ?: f.bearing
         val fromLa = if (curSet) curLa.toDouble() else f.lat
         val fromLo = if (curSet) curLo.toDouble() else f.lon
         val fromBr = curBr
@@ -752,6 +756,15 @@ private fun DriveMap(
             map.invalidate()
         }
         curLa = f.lat.toFloat(); curLo = f.lon.toFloat(); curBr = f.bearing
+    }
+    // The car arrow turns with the live compass between GPS fixes.
+    val live = ng.pixelslimited.health.drive.Compass.heading
+    LaunchedEffect(live) {
+        if (live != null && car.show) {
+            car.bearing = live
+            if (nav && follow) map.mapOrientation = -live
+            map.invalidate()
+        }
     }
     LaunchedEffect(follow) {
         if (follow && curSet) map.controller.setCenter(GeoPoint(car.lat, car.lon))
