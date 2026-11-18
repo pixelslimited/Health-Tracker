@@ -145,7 +145,6 @@ fun AppRoot() {
     val scroll = rememberScrollState()
     LaunchedEffect(target) { scroll.scrollTo(0) }
     Box(Modifier.fillMaxSize()) {
-    WaterLayer(Modifier.fillMaxSize())
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = { BottomBar(titles.map { s(it) }, if (page.isNotEmpty()) 3 else tab, s(R.string.add), { page = ""; tab = it }, { add = "pick" }) }
@@ -208,6 +207,8 @@ fun AppRoot() {
                 }
             }
         }
+        // In front of the page but inside the padding, so the water ends at the navigation bar and runs on under it.
+        WaterLayer(Modifier.fillMaxSize())
         androidx.compose.animation.AnimatedVisibility(
             visible = release != null && !dismissed,
             modifier = Modifier.align(Alignment.BottomCenter),

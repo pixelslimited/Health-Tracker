@@ -42,8 +42,8 @@ private class Drop(var x: Float, var y: Float, var vx: Float, var vy: Float, val
 
 /**
  * Water that gushes over one side of the steps card when the goal is reached (the side alternates by day),
- * pours down that screen edge and runs on under the navigation bar; nothing collects above it. Drawn behind
- * the page, so it shows in the margins and gaps. The drops are blurred together and cut back to a sharp edge, which makes them merge
+ * smashes against the page, pours down that screen edge and runs on under the navigation bar; nothing
+ * collects above it. Drawn in front of the page content, down to the navigation bar. The drops are blurred together and cut back to a sharp edge, which makes them merge
  * like liquid (Android 12 and newer; older phones get plain drops).
  */
 @Composable
@@ -86,6 +86,12 @@ fun WaterLayer(modifier: Modifier = Modifier) {
                         val x = if (rightToday) right + big * 0.3f else left - big * 0.3f
                         val out = (8f + Random.nextFloat() * 40f) * dp
                         drops.add(Drop(x, top + Random.nextFloat() * 6f * dp, if (rightToday) out else -out, (Random.nextFloat() * 120f - 20f) * dp, big))
+                        // Smashing against the card: spray flung back over it from the brim and along its edge.
+                        if (Random.nextFloat() < 0.4f) {
+                            val sy = top + Random.nextFloat() * (card.bottom - card.top)
+                            val back = (50f + Random.nextFloat() * 170f) * dp
+                            drops.add(Drop(if (rightToday) right else left, sy, if (rightToday) -back else back, -(40f + Random.nextFloat() * 240f) * dp, (2.5f + Random.nextFloat() * 3f) * dp))
+                        }
                     }
                 }
                 val g = 1200f * dp
