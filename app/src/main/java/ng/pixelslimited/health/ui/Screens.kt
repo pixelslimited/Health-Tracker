@@ -149,7 +149,7 @@ fun AppRoot() {
         containerColor = Color.Transparent,
         bottomBar = { BottomBar(titles.map { s(it) }, if (page.isNotEmpty()) 3 else tab, s(R.string.add), { page = ""; tab = it }, { add = "pick" }) }
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
+        Box(Modifier.padding(pad).fillMaxSize().waterTouch()) {
         Column(
             Modifier.fillMaxSize().imePadding().fadeEdges(false, scroll.canScrollBackward, scroll.canScrollForward, 28.dp).verticalScroll(scroll)
                 .wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = 640.dp).fillMaxWidth()
