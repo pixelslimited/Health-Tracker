@@ -423,7 +423,7 @@ fun DriveScreen(onClose: () -> Unit) {
                     }
                 } else {
                     Row(Modifier.fillMaxWidth().height(56.dp).clip(SQ).background(FIELD).padding(start = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(44.dp).clickable { if (focused || stage > 0) goBack() }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(48.dp).clickable { if (focused || stage > 0) goBack() }, contentAlignment = Alignment.Center) {
                             SwapIcon(focused || stage > 0) { backIcon ->
                             ComposeCanvas(Modifier.size(22.dp)) {
                                 val u = size.minDimension / 24f
@@ -454,7 +454,7 @@ fun DriveScreen(onClose: () -> Unit) {
                         )
                         SwapIcon(query.isNotEmpty()) { hasText ->
                         if (hasText) {
-                            Box(Modifier.size(44.dp).clickable { query = ""; if (stage in 1..2) { stage = 0; place = null; routes = emptyList() } }.semantics { contentDescription = ctx.getString(R.string.drive_clear) }, contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(48.dp).clickable { query = ""; if (stage in 1..2) { stage = 0; place = null; routes = emptyList() } }.semantics { contentDescription = ctx.getString(R.string.drive_clear) }, contentAlignment = Alignment.Center) {
                                 ComposeCanvas(Modifier.size(18.dp)) {
                                     drawLine(INK, Offset(0f, 0f), Offset(size.width, size.height), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
                                     drawLine(INK, Offset(size.width, 0f), Offset(0f, size.height), strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
@@ -462,7 +462,7 @@ fun DriveScreen(onClose: () -> Unit) {
                             }
                         } else {
                             Box(
-                                Modifier.size(44.dp).clickable {
+                                Modifier.size(48.dp).clickable {
                                     try {
                                         speak.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM))
                                     } catch (e: Exception) {
