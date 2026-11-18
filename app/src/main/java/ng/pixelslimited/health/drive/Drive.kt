@@ -36,7 +36,12 @@ object Drive {
 
     private const val DRIVE_MS = 2.78f   // 10 km/h
     private const val STILL_MS = 1.4f
-    private var hits = 0
+    private const val GOOD_ACC = 25f      // metres; worse fixes never drive stats or detection
+    private const val HOLD_MS = 5_000L    // speed must hold this long...
+    private const val HOLD_M = 30.0       // ...and cover this much ground
+    private var driveSince = 0L
+    private var driveLat = 0.0
+    private var driveLon = 0.0
     private var armed = true
     private var slowSince = 0L
 
@@ -76,6 +81,8 @@ object Drive {
         val sp = if (l.hasSpeed()) l.speed.coerceAtLeast(0f) else 0f
         val br = if (l.hasBearing() && sp > 1.2f) l.bearing else (prev?.bearing ?: 0f)
         fix = Fix(l.latitude, l.longitude, sp, br, if (l.hasAccuracy()) l.accuracy else 0f, if (l.hasAltitude()) l.altitude else 0.0, now)
+        val good = l.hasAccuracy() && l.accuracy <= GOOD_ACC
+        if (!good) return
         if (prev != null) {
             val dt = now - prev.ts
             val d = metresBetween(prev.lat, prev.lon, l.latitude, l.longitude)
@@ -85,20 +92,25 @@ object Drive {
             }
         }
         if (sp > maxMs) maxMs = sp
-        detect(c, sp, now)
+        detect(c, sp, l.latitude, l.longitude, now)
         ng.pixelslimited.health.steps.StepService.pushSpeed()
     }
 
-    private fun detect(c: Context, sp: Float, now: Long) {
+    private fun detect(c: Context, sp: Float, lat: Double, lon: Double, now: Long) {
         if (sp < STILL_MS) {
             if (slowSince == 0L) slowSince = now
             if (now - slowSince > 120_000L) armed = true
-            hits = 0
+        } else slowSince = 0L
+        if (sp < DRIVE_MS) {
+            driveSince = 0L
             return
         }
-        slowSince = 0L
-        if (sp >= DRIVE_MS) hits++ else return
-        if (hits >= 2 && armed && !open && auto(c)) {
+        if (driveSince == 0L) {
+            driveSince = now; driveLat = lat; driveLon = lon
+            return
+        }
+        val sustained = now - driveSince >= HOLD_MS && metresBetween(driveLat, driveLon, lat, lon) >= HOLD_M
+        if (sustained && armed && !open && auto(c)) {
             armed = false
             if (visible) open = true else notify(c.applicationContext)
         }
