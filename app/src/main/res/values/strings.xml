@@ -404,4 +404,26 @@
     <string name="nav_ramp">Take the ramp</string>
     <string name="nav_onto">%1$s onto %2$s</string>
     <string name="today_summary">Today so far</string>
+    <string name="walk_plan">Plan a walk</string>
+    <string name="walk_draw">Draw</string>
+    <string name="walk_loop">Round trip</string>
+    <string name="walk_dest">Destination</string>
+    <string name="walk_tap">Tap the map to add points. The route follows walkable paths between them.</string>
+    <string name="walk_tap_dest">Tap the map to choose where to end up. The app adds distance to reach your remaining steps.</string>
+    <string name="walk_loop_hint">Plans a walk from where you are that returns to the same spot and adds up to your remaining steps.</string>
+    <string name="walk_undo">Undo</string>
+    <string name="walk_clear">Clear</string>
+    <string name="walk_me">My spot</string>
+    <string name="walk_plan_btn">Plan for my remaining steps</string>
+    <string name="walk_next">Another route</string>
+    <string name="walk_dist">Distance</string>
+    <string name="walk_time">Time</string>
+    <string name="walk_eta">Arrive</string>
+    <string name="walk_steps_n">%1$s steps</string>
+    <string name="walk_left_n">%1$s steps still to go of the %2$s left for today. Add more points to cover them.</string>
+    <string name="walk_done">This walk covers the %1$s steps you have left today.</string>
+    <string name="walk_goal_met">You have already reached today\'s step goal.</string>
+    <string name="walk_loc">Your location is not available. Turn on location and try again.</string>
+    <string name="walk_fail">No walkable route found here. Try another place.</string>
+    <string name="walk_busy">Planning the route...</string>
 </resources>

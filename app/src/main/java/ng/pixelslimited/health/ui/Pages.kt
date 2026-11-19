@@ -231,11 +231,12 @@ internal fun dayLabels(): List<String> = DayOfWeek.values().map { it.getDisplayN
 
 /** Activity > Steps. */
 @Composable
-fun StepsPage(me: Profile) {
+fun StepsPage(me: Profile, onWalk: () -> Unit = {}) {
     val ctx = LocalContext.current
     val today = LocalDate.now()
     val week = weekSteps(me, today)
     StepsCard(me, false)
+    Button(onClick = onWalk, modifier = Modifier.fillMaxWidth()) { Text(s(R.string.walk_plan)) }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Block(Modifier.weight(1f)) { Label(s(R.string.streak)); Big(ctx.getString(R.string.f_days, streak(me, today))) }
         Block(Modifier.weight(1f)) { Label(s(R.string.this_week)); Big(String.format(Locale.getDefault(), "%,d", week.sum())) }

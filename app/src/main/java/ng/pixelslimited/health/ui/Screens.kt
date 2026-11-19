@@ -159,7 +159,7 @@ fun AppRoot() {
             if (page.isNotEmpty()) {
                 Column {
                     Text(s(R.string.back), Modifier.clickable { page = "" }.padding(vertical = 10.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(s(when (page) { "reports" -> R.string.tab_reports; "reminders" -> R.string.reminders; else -> R.string.profile_title }), style = MaterialTheme.typography.headlineMedium)
+                    Text(s(when (page) { "reports" -> R.string.tab_reports; "reminders" -> R.string.reminders; "walk" -> R.string.walk_plan; else -> R.string.profile_title }), style = MaterialTheme.typography.headlineMedium)
                 }
             } else if (tab == 0) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -187,8 +187,9 @@ fun AppRoot() {
                         "settings" -> Settings(data, me)
                         "reports" -> Reports(me)
                         "reminders" -> RemindersPage(me)
+                        "walk" -> WalkPage(me)
                         "00" -> Home(me, go) { page = it }
-                        "10" -> StepsPage(me)
+                        "10" -> StepsPage(me) { page = "walk" }
                         "11" -> WorkoutsPage(me, save)
                         "12" -> PlacesPage(me)
                         "20" -> VitalsPage(me) { add = it }
