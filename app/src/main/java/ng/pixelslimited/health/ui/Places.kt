@@ -97,6 +97,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /** Today's stop count, distance and whether you are at a stop now; refreshes every few seconds without re-reading the whole log. */
 @Composable
@@ -421,7 +424,7 @@ fun PlacesView(me: Profile, inline: Boolean, onClose: () -> Unit, onFull: () -> 
             AlertDialog(
                 onDismissRequest = { renaming = null },
                 title = { Text(s(R.string.places_rename)) },
-                text = { OutlinedTextField(text, { text = it }, label = { Text(s(R.string.places_hint)) }, singleLine = true) },
+                text = { OutlinedTextField(text, { text = it }, label = { Text(s(R.string.places_hint)) }, singleLine = true, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done)) },
                 confirmButton = {
                     TextButton(onClick = {
                         Store.edit { it.copy(labels = nameLabels(it.labels, st.lat, st.lon, text)) }

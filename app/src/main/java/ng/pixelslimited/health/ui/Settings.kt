@@ -45,6 +45,8 @@ import ng.pixelslimited.health.data.Store
 import ng.pixelslimited.health.reminders.Reminders
 import ng.pixelslimited.health.update.Updater
 import java.util.Locale
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 private fun switchProfile(ctx: Context, id: String) {
     Reminders.cancelAll(ctx)
@@ -81,7 +83,7 @@ fun Settings(data: AppData, me: Profile) {
     }
 
     Section(s(R.string.about_you)) {
-        OutlinedTextField(me.name, { v -> Store.edit { it.copy(name = v) } }, label = { Text(s(R.string.name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(me.name, { v -> Store.edit { it.copy(name = v) } }, label = { Text(s(R.string.name)) }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = me.male, onClick = { Store.edit { it.copy(male = true) } }, label = { Text(s(R.string.male)) })
             FilterChip(selected = !me.male, onClick = { Store.edit { it.copy(male = false) } }, label = { Text(s(R.string.female)) })
@@ -117,11 +119,11 @@ fun Settings(data: AppData, me: Profile) {
 
     Section(s(R.string.emergency)) {
         Text(s(R.string.emergency_desc), style = MaterialTheme.typography.bodyMedium)
-        OutlinedTextField(me.contactName, { v -> Store.edit { it.copy(contactName = v) } }, label = { Text(s(R.string.name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(me.contactName, { v -> Store.edit { it.copy(contactName = v) } }, label = { Text(s(R.string.name)) }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next))
         OutlinedTextField(
             me.contactPhone, { v -> Store.edit { it.copy(contactPhone = v.filter { c -> c.isDigit() || c == '+' }) } },
             label = { Text(s(R.string.phone)) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
         )
     }
 
@@ -166,7 +168,7 @@ fun Settings(data: AppData, me: Profile) {
             AlertDialog(
                 onDismissRequest = { dlg = "" },
                 title = { Text(s(R.string.add_profile)) },
-                text = { OutlinedTextField(name, { name = it }, label = { Text(s(R.string.name)) }, singleLine = true) },
+                text = { OutlinedTextField(name, { name = it }, label = { Text(s(R.string.name)) }, singleLine = true, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done)) },
                 confirmButton = {
                     TextButton(enabled = name.isNotBlank(), onClick = {
                         val p = Profile(name = name.trim())

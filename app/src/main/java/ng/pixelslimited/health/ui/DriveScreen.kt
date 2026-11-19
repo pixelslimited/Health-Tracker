@@ -141,6 +141,7 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.TilesOverlay
+import androidx.compose.ui.text.input.KeyboardType
 
 // Drive mode uses the app's own scheme: ink and paper base tones, one red accent, in light and dark.
 private class Pal(val dark: Boolean, val bg: Color, val card: Color, val field: Color, val line: Color, val off: Color, val grey: Color, val ink: Color, val accent: Color)
@@ -670,7 +671,7 @@ fun DriveScreen(onClose: () -> Unit) {
                         s(R.string.drive_overlay), 16, ACCTXT,
                         modifier = Modifier.fillMaxWidth().clickable { ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + ctx.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.padding(vertical = 8.dp),
                     )
-                    OutlinedTextField(value = key, onValueChange = { key = it; Drive.setKey(ctx, it) }, singleLine = true, label = { Text(s(R.string.drive_key)) }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = key, onValueChange = { key = it; Drive.setKey(ctx, it) }, singleLine = true, label = { Text(s(R.string.drive_key)) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done))
                     Tx(s(R.string.drive_key_hint), 16, GREY)
                     Pill(s(R.string.close), true) { showSet = false }
                 }

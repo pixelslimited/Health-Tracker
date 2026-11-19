@@ -62,6 +62,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ng.pixelslimited.health.R
 import ng.pixelslimited.health.data.Level
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 @Composable
 fun s(id: Int): String = stringResource(id)
@@ -214,7 +217,7 @@ fun RulerDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 specs.forEachIndexed { i, sp -> Ruler(values[i], { values[i] = it }, sp.range, sp.step, sp.label, sp.fmt) }
                 extra()
-                if (note) OutlinedTextField(text, { text = it }, label = { Text(s(R.string.note)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                if (note) OutlinedTextField(text, { text = it }, label = { Text(s(R.string.note)) }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done))
             }
         },
         confirmButton = { TextButton(onClick = { onSave(values.toList(), text.trim()) }) { Text(s(R.string.save)) } },
