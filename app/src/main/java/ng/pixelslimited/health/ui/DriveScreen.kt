@@ -687,7 +687,7 @@ private class TomTomFlow(val key: String, name: String) : OnlineTileSourceBase(n
         baseUrl + "traffic/map/4/tile/flow/relative0/" + MapTileIndex.getZoom(pMapTileIndex) + "/" + MapTileIndex.getX(pMapTileIndex) + "/" + MapTileIndex.getY(pMapTileIndex) + ".png?key=" + key
 }
 
-/** The drive map: follows the car, turns heading-up while navigating, press and hold to drop a destination. */
+/** The drive map: follows the car, turns heading-up whenever it follows you (two fingers rotate it), press and hold to drop a destination. */
 @Composable
 private fun DriveMap(
     fix: Drive.Fix?, routes: List<Route>, sel: Int, show: Boolean, dest: PlaceInfo?, trafficKey: String, nav: Boolean, follow: Boolean, fit: Int,
@@ -697,7 +697,6 @@ private fun DriveMap(
     val pick by rememberUpdatedState(onPick)
     val fol by rememberUpdatedState(onFollow)
     val folNow by rememberUpdatedState(follow)
-    val navNow by rememberUpdatedState(nav)
     val accent = LIME.toArgb()
     val dark = pal.dark
     val car = remember(dark) { CarOverlay(ctx.resources.displayMetrics.density, accent, if (dark) 0xFF101417.toInt() else 0xFFFFFFFF.toInt()) }
@@ -730,6 +729,11 @@ private fun DriveMap(
         }
     }
     DisposableEffect(Unit) { onDispose { map.onDetach() } }
+    // Turn the map to face the heading; ignore tiny changes so it does not shimmer.
+    fun turnTo(deg: Float) {
+        val d = ((deg - map.mapOrientation + 540f) % 360f) - 180f
+        if (kotlin.math.abs(d) >= 1.5f) map.mapOrientation = (map.mapOrientation + d + 360f) % 360f
+    }
     val t = remember { Animatable(1f) }
     var curLa by remember { mutableFloatStateOf(0f) }
     var curLo by remember { mutableFloatStateOf(0f) }
@@ -753,7 +757,7 @@ private fun DriveMap(
             car.lat = la; car.lon = lo
             if (folNow || firstFix) map.controller.setCenter(GeoPoint(la, lo))
             // Heading-up while navigating: the road ahead points to the top.
-            if (navNow && folNow) map.mapOrientation = -curBr
+            if (folNow && ng.pixelslimited.health.drive.Compass.heading == null) turnTo(-curBr)
             map.invalidate()
         }
         curLa = f.lat.toFloat(); curLo = f.lon.toFloat(); curBr = f.bearing
@@ -763,16 +767,19 @@ private fun DriveMap(
     LaunchedEffect(live) {
         if (live != null && car.show) {
             car.bearing = live
-            if (nav && follow) map.mapOrientation = -live
+            if (folNow) turnTo(-live)
             map.invalidate()
         }
     }
     LaunchedEffect(follow) {
-        if (follow && curSet) map.controller.setCenter(GeoPoint(car.lat, car.lon))
-        if (!follow) { map.mapOrientation = 0f; map.invalidate() }
+        if (follow && curSet) {
+            map.controller.setCenter(GeoPoint(car.lat, car.lon))
+            turnTo(-car.bearing)
+            map.invalidate()
+        }
     }
     LaunchedEffect(nav) {
-        if (nav) map.controller.setZoom(17.5) else { map.mapOrientation = 0f; map.invalidate() }
+        if (nav) map.controller.setZoom(17.5)
     }
     LaunchedEffect(fit) {
         if (fit == 0) return@LaunchedEffect
@@ -793,6 +800,7 @@ private fun DriveMap(
         holder.traffic = null
         m.overlayManager.tilesOverlay.setColorFilter(if (dark) TilesOverlay.INVERT_COLORS else multiplyFilter(BG))
         m.overlays.clear()
+        m.overlays.add(org.osmdroid.views.overlay.gestures.RotationGestureOverlay(m).apply { isEnabled = true })
         m.overlays.add(object : Overlay() {
             override fun draw(c: Canvas, osmv: MapView, shadow: Boolean) {}
             override fun onLongPress(e: MotionEvent, mapView: MapView): Boolean {

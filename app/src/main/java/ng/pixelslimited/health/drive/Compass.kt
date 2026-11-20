@@ -16,8 +16,8 @@ import kotlin.math.abs
 /**
  * Live heading from the phone's compass, many times a second, so the direction changes the moment you turn.
  * GPS only reports a direction once a second and only while moving, so it lags.
- * While driving at speed, the GPS direction slowly teaches an offset, so a phone sitting at an angle in its
- * holder still reads the direction the car travels.
+ * While moving (2 m/s, about 7 km/h, and up), the GPS direction keeps correcting an offset, so a phone sitting at
+ * an angle in its holder, or a compass disturbed by a vehicle's metal, still reads the direction of travel.
  */
 object Compass {
     /** Degrees from true north, 0 to 360, or null when the phone has no compass. */
@@ -28,7 +28,7 @@ object Compass {
     private var ctx: Context? = null
     private var smooth = Float.NaN
     private var offset = 0f
-    private var learned = 0
+    private var learned = false
     private val rot = FloatArray(9)
     private val remap = FloatArray(9)
     private val ori = FloatArray(3)
@@ -70,12 +70,12 @@ object Compass {
             // Light smoothing: removes jitter, keeps turns instant.
             smooth = if (smooth.isNaN()) deg else (smooth + diff(deg, smooth) * 0.35f + 360f) % 360f
             val f = Drive.fix
-            if (f != null && f.speed > 5f && System.currentTimeMillis() - f.ts < 2000) {
+            if (f != null && f.speed > 2f && System.currentTimeMillis() - f.ts < 2000) {
                 val want = diff(f.bearing, smooth)
-                offset += diff(want, offset) * 0.02f
-                if (learned < 200) learned++
+                // First correction snaps, later ones follow the GPS course gently.
+                if (!learned) { offset = want; learned = true } else offset += diff(want, offset) * 0.03f
             }
-            val out = (smooth + (if (learned > 30) offset else 0f) + 360f) % 360f
+            val out = (smooth + (if (learned) offset else 0f) + 360f) % 360f
             val cur = heading
             if (cur == null || abs(diff(out, cur)) >= 0.5f) heading = out
         }
