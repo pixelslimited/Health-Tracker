@@ -18,6 +18,11 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -54,6 +59,23 @@ private fun switchProfile(ctx: Context, id: String) {
     Reminders.scheduleAll(ctx)
 }
 
+/** Settings group: small label above, rounded card below. */
+@Composable
+private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, Modifier.padding(start = 4.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(
+            Modifier.fillMaxWidth().clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f), shape)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
+    }
+}
+
 @Composable
 fun Settings(data: AppData, me: Profile) {
     val ctx = LocalContext.current
@@ -63,7 +85,7 @@ fun Settings(data: AppData, me: Profile) {
     var release by remember { mutableStateOf<Updater.Release?>(null) }
     androidx.compose.runtime.LaunchedEffect(Unit) { release = Updater.check() }
 
-    Section(s(R.string.profiles)) {
+    SettingsCard(s(R.string.profiles)) {
         data.profiles.forEach { p ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(selected = p.id == me.id, onClick = { switchProfile(ctx, p.id) })
@@ -74,7 +96,7 @@ fun Settings(data: AppData, me: Profile) {
         OutlinedButton(onClick = { dlg = "profile" }) { Text(s(R.string.add_profile)) }
     }
 
-    Section(s(R.string.appearance)) {
+    SettingsCard(s(R.string.appearance)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(R.string.theme_system, R.string.theme_light, R.string.theme_dark).forEachIndexed { i, label ->
                 FilterChip(selected = data.theme == i, onClick = { Store.update { it.copy(theme = i) } }, label = { Text(s(label)) })
@@ -82,7 +104,7 @@ fun Settings(data: AppData, me: Profile) {
         }
     }
 
-    Section(s(R.string.about_you)) {
+    SettingsCard(s(R.string.about_you)) {
         OutlinedTextField(me.name, { v -> Store.edit { it.copy(name = v) } }, label = { Text(s(R.string.name)) }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = me.male, onClick = { Store.edit { it.copy(male = true) } }, label = { Text(s(R.string.male)) })
@@ -92,21 +114,21 @@ fun Settings(data: AppData, me: Profile) {
         Ruler(me.heightCm, { v -> Store.edit { it.copy(heightCm = v) } }, 100..230, 1, s(R.string.height_cm))
     }
 
-    Section(s(R.string.goals)) {
+    SettingsCard(s(R.string.goals)) {
         Ruler(me.dailyGoal, { v -> Store.edit { it.copy(dailyGoal = v) } }, 1000..40000, 500, s(R.string.daily_steps))
         Ruler(me.weeklyGoal, { v -> Store.edit { it.copy(weeklyGoal = v) } }, 5000..280000, 1000, s(R.string.weekly_steps))
         Ruler(me.waterGoal, { v -> Store.edit { it.copy(waterGoal = v) } }, 750..6000, 750, s(R.string.water_ml))
         Ruler(me.sleepGoal, { v -> Store.edit { it.copy(sleepGoal = v) } }, 4..12, 1, s(R.string.sleep_hours))
     }
 
-    Section(s(R.string.targets)) {
+    SettingsCard(s(R.string.targets)) {
         Ruler(me.fastingMax, { v -> Store.edit { it.copy(fastingMax = v) } }, 80..200, 1, s(R.string.fasting_target))
         Ruler(me.hba1cTarget, { v -> Store.edit { it.copy(hba1cTarget = v) } }, 50..100, 1, s(R.string.hba1c_target)) { String.format(Locale.US, "%.1f %%", it / 10.0) }
         Text(s(R.string.targets_note), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
     var batteryOk by remember { mutableStateOf(ctx.getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(ctx.packageName)) }
-    if (!batteryOk) Section(s(R.string.keep_alive)) {
+    if (!batteryOk) SettingsCard(s(R.string.keep_alive)) {
         Text(s(R.string.keep_alive_desc), style = MaterialTheme.typography.bodyMedium)
         OutlinedButton(onClick = {
             try {
@@ -117,7 +139,7 @@ fun Settings(data: AppData, me: Profile) {
         }) { Text(s(R.string.allow_btn)) }
     }
 
-    Section(s(R.string.emergency)) {
+    SettingsCard(s(R.string.emergency)) {
         Text(s(R.string.emergency_desc), style = MaterialTheme.typography.bodyMedium)
         OutlinedTextField(me.contactName, { v -> Store.edit { it.copy(contactName = v) } }, label = { Text(s(R.string.name)) }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next))
         OutlinedTextField(
@@ -127,7 +149,7 @@ fun Settings(data: AppData, me: Profile) {
         )
     }
 
-    Section(s(R.string.security)) {
+    SettingsCard(s(R.string.security)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(s(R.string.app_lock), Modifier.weight(1f))
             Switch(checked = data.lock, onCheckedChange = { on ->
@@ -138,7 +160,7 @@ fun Settings(data: AppData, me: Profile) {
         Text(s(R.string.security_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
-    if (Build.VERSION.SDK_INT >= 33) Section(s(R.string.language)) {
+    if (Build.VERSION.SDK_INT >= 33) SettingsCard(s(R.string.language)) {
         OutlinedButton(onClick = {
             try {
                 ctx.startActivity(Intent(SystemSettings.ACTION_APP_LOCALE_SETTINGS, Uri.parse("package:" + ctx.packageName)))
@@ -148,7 +170,7 @@ fun Settings(data: AppData, me: Profile) {
         }) { Text(s(R.string.change_language)) }
     }
 
-    Section(s(R.string.updates)) {
+    SettingsCard(s(R.string.updates)) {
         Text(ctx.getString(R.string.version, BuildConfig.VERSION_NAME))
         val found = release
         if (found != null) UpdateCard(found) else OutlinedButton(onClick = {
